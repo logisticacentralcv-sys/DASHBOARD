@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Registro Logístico</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#0b1624;--card:#132340;--border:#1e3a5c;--accent:#e8a020;--blue:#2563eb;--green:#22c55e;--red:#ef4444;--gray:#64748b;--white:#f1f5f9;--font:'Segoe UI',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--white);min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.header{width:100%;background:linear-gradient(90deg,#0a1828,#0f2240);border-bottom:2px solid var(--accent);padding:14px 20px;display:flex;align-items:center;gap:10px}
+.header-icon{font-size:1.4rem}.header-title{font-size:.95rem;font-weight:800;color:var(--white)}.header-sub{font-size:.72rem;color:var(--accent);font-weight:600;margin-top:1px}
+.page-wrap{width:100%;max-width:420px;padding:24px 20px 48px;display:flex;flex-direction:column;align-items:center;gap:20px}
+.suc-badge{width:100%;background:rgba(232,160,32,.08);border:2px solid var(--accent);border-radius:14px;padding:18px 24px;text-align:center}
+.suc-label{font-size:.68rem;color:var(--gray);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px}
+.suc-name{font-size:2rem;font-weight:800;color:var(--accent);letter-spacing:.01em}
+.card{width:100%;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 20px}
+.card-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.viaje-info{background:rgba(37,99,235,.07);border:1px solid rgba(37,99,235,.18);border-radius:10px;padding:12px 16px;margin-bottom:18px}
+.viaje-info-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:.9rem}
+.viaje-info-row+.viaje-info-row{border-top:1px solid rgba(37,99,235,.15)}
+.vi-label{color:var(--gray)}.vi-val{color:var(--white);font-weight:600}.viaje-id{font-family:monospace;color:#60a5fa;font-weight:700;font-size:.9rem}
+.fase-banner{padding:12px 16px;border-radius:10px;margin-bottom:16px;text-align:center}
+.fase-mercado{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fbbf24}
+.fase-armado{background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.3);color:#60a5fa}
+.fase-reparto{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#4ade80}
+.fase-icon{font-size:1.8rem;margin-bottom:6px;display:block}
+.fase-titulo{font-size:1rem;font-weight:800;margin-bottom:4px}
+.fase-desc{font-size:.82rem;opacity:.85}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:.72rem;color:var(--gray);text-transform:uppercase;letter-spacing:.09em;margin-bottom:8px;font-weight:600}
+select,input[type=text],input[type=number]{width:100%;background:#0d1e33;border:1px solid var(--border);color:var(--white);padding:13px 14px;border-radius:9px;font-size:.95rem;font-family:var(--font);outline:none}
+select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2364748b' d='M6 8L0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+select:focus,input:focus{border-color:var(--blue)}
+.radio-group{display:flex;gap:12px;margin-top:4px}
+.radio-opt{flex:1}.radio-opt input{display:none}
+.radio-label{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 10px;border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:.18s;text-align:center;user-select:none}
+.radio-label:active{transform:scale(.97)}
+.radio-opt input:checked + .radio-label.llegada{border-color:var(--green);background:rgba(34,197,94,.1)}
+.radio-opt input:checked + .radio-label.salida{border-color:var(--accent);background:rgba(232,160,32,.1)}
+.radio-icon{font-size:1.8rem;line-height:1}.radio-text{font-size:.88rem;font-weight:700;color:var(--white);letter-spacing:.02em}
+.btn{width:100%;padding:15px;border:none;border-radius:11px;font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--font);transition:.18s;margin-top:8px;letter-spacing:.02em}
+.btn:active{transform:scale(.98)}.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#1d4ed8}
+.btn-green{background:var(--green);color:#000}.btn-green:hover{background:#16a34a}
+.btn-orange{background:#f97316;color:#000}.btn-orange:hover{background:#ea6b0a}
+.btn-danger{background:rgba(239,68,68,.12);color:#f87171;border:1.5px solid rgba(239,68,68,.25)}.btn-danger:hover{background:rgba(239,68,68,.22)}
+.btn-ghost{background:transparent;color:var(--gray);border:1px solid var(--border)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+.estado-ok{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:24px 16px;text-align:center;margin-bottom:6px}
+.estado-ok-icon{font-size:3rem;margin-bottom:10px;display:block}.estado-ok-title{font-size:1.1rem;font-weight:800;color:var(--green);margin-bottom:6px}
+.estado-ok-val{font-size:1rem;font-weight:700;color:var(--white);margin:8px 0 4px}.estado-ok-sub{font-size:.82rem;color:var(--gray)}
+.estado-warn{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:12px;padding:20px 16px;text-align:center;margin-bottom:6px}
+.estado-warn-icon{font-size:2rem;margin-bottom:8px;display:block}.estado-warn-title{font-size:.95rem;font-weight:700;color:#fbbf24;margin-bottom:4px}.estado-warn-sub{font-size:.82rem;color:var(--gray)}
+.err-msg{color:#f87171;font-size:.82rem;margin-top:6px}
+.loader-wrap{display:flex;flex-direction:column;align-items:center;padding:48px 20px;gap:16px;width:100%}
+.spinner{width:32px;height:32px;border:3px solid rgba(255,255,255,.08);border-top-color:var(--accent);border-radius:50%;animation:spin .65s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}.loader-text{font-size:.85rem;color:var(--gray)}
+#toast-container{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:10px;width:92%;max-width:400px}
+.toast-aviso{background:linear-gradient(135deg,#1a1a1a,#2c2c2c);color:#fff;padding:16px 18px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.45);font-size:14px;font-weight:600;display:flex;flex-direction:column;gap:10px;animation:toast-in .3s cubic-bezier(.34,1.56,.64,1);position:relative}
+.toast-aviso.retirar{border-left:4px solid #f5a623}.toast-aviso.aprobada{border-left:4px solid #4a90d9}.toast-aviso.dejar{border-left:4px solid #7ed321}
+.toast-aviso a{align-self:flex-start;background:rgba(255,255,255,.15);color:#fff;text-decoration:none;padding:8px 14px;border-radius:7px;font-size:13px;font-weight:700}
+.toast-aviso .cerrar{position:absolute;top:8px;right:12px;cursor:pointer;opacity:.6}
+@keyframes toast-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="header">
+  <span class="header-icon">🚚</span>
+  <div><div class="header-title">Campo Verde · Logística</div><div class="header-sub">Sistema de registro QR</div></div>
+</div>
+<div class="page-wrap">
+  <div class="suc-badge">
+    <div class="suc-label">Punto de registro</div>
+    <div class="suc-name" id="suc-name-display">—</div>
+  </div>
+  <div id="contenido" style="width:100%">
+    <div class="loader-wrap"><div class="spinner"></div><div class="loader-text">Cargando...</div></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://lrwwpulunfcavmvmwotd.supabase.co";
+const SUPABASE_KEY = "sb_publishable_SrUcYrDVBIOvZgF-DSPcyg_qV0LXEDQ";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const TRANSFER_APP_URL = "https://transferlog.vercel.app/";
+const RADIO_TOLERANCIA_METROS = 50;
+
+function normNotif(s){ return (s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
+function escHtml(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function $(id){ return document.getElementById(id); }
+
+const params = new URLSearchParams(location.search);
+const SUCURSAL_PARAM = params.get("s") || "";
+function esFabrica(){ return normNotif(SUCURSAL_PARAM)==="fabrica"; }
+
+let CACHE_SUCURSALES = [];
+let CACHE_RECORRIDOS = [];
+let SUCURSAL_OFICIAL = SUCURSAL_PARAM;
+let viajeActivo = localStorage.getItem("viajeActivo_cv2") || null;
+let celularId = localStorage.getItem("celularId_cv2") || "";
+if(!celularId){ celularId = Math.random().toString(36).substring(2)+Date.now().toString(36); localStorage.setItem("celularId_cv2", celularId); }
+
+function mostrarToast(mensaje, tipo, link){
+  const iconos = { retirar:"📦", aprobada:"📋", dejar:"📥" };
+  const cont = $("toast-container");
+  const t = document.createElement("div");
+  t.className = "toast-aviso "+tipo;
+  t.innerHTML = '<span class="cerrar" onclick="this.parentElement.remove()">✕</span>'+
+    '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">'+(iconos[tipo]||"🔔")+'</span><span>'+escHtml(mensaje)+'</span></div>'+
+    '<a href="'+link+'" target="_blank">Ir a Transferencias →</a>';
+  cont.appendChild(t);
+}
+async function chequearAvisosTransferencia(sucursalNombre){
+  try{
+    const listaParaRetirar = await sb.from("solicitudes").select("id",{count:"exact",head:true}).eq("sucursal",sucursalNombre).eq("estado","Lista para retirar");
+    const aprobadaSinArmar = await sb.from("solicitudes").select("id",{count:"exact",head:true}).eq("sucursal",sucursalNombre).eq("estado","Aprobada");
+    const paraDejar = await sb.from("solicitudes").select("id",{count:"exact",head:true}).eq("destino",sucursalNombre).eq("estado","En tránsito");
+    if(listaParaRetirar.count) mostrarToast("Tenés "+listaParaRetirar.count+" transferencia(s) lista(s) para retirar acá", "retirar", TRANSFER_APP_URL);
+    if(aprobadaSinArmar.count) mostrarToast("Hay transferencia(s) aprobadas acá — pedí a la sucursal que las arme", "aprobada", TRANSFER_APP_URL);
+    if(paraDejar.count) mostrarToast("Tenés "+paraDejar.count+" transferencia(s) para dejar acá", "dejar", TRANSFER_APP_URL);
+  }catch(e){ console.error("Error chequeando avisos de TransferApp:", e); }
+}
+
+async function cargarInicial(){
+  const sucs = await sb.from("sucursales").select("nombre,lat,lon");
+  const recs = await sb.from("recorridos").select("nombre");
+  CACHE_SUCURSALES = sucs.data || [];
+  CACHE_RECORRIDOS = (recs.data||[]).map(function(r){return r.nombre;}).filter(Boolean);
+
+  if(!esFabrica()){
+    const match = CACHE_SUCURSALES.find(function(s){return normNotif(s.nombre)===normNotif(SUCURSAL_PARAM);});
+    SUCURSAL_OFICIAL = match ? match.nombre : SUCURSAL_PARAM;
+  } else {
+    SUCURSAL_OFICIAL = "FABRICA";
+  }
+  $("suc-name-display").textContent = esFabrica() ? "🏭 Fábrica" : "📍 "+SUCURSAL_OFICIAL;
+
+  if(!esFabrica() && SUCURSAL_OFICIAL) chequearAvisosTransferencia(SUCURSAL_OFICIAL);
+
+  render();
+}
+
+async function buscarRepartidorPorDni(dni){
+  const { data, error } = await sb.from("usuarios").select("dni,nombre,activo").eq("tipo","REPARTIDOR").eq("dni", dni).limit(1);
+  if(error || !data || !data.length) return null;
+  if(data[0].activo === "no") return null;
+  return data[0];
+}
+
+async function buscarViajeActivoPorDni(dni){
+  const { data } = await sb.from("flota_viajes").select("*").eq("estado","ACTIVO").or("dni_rep1.eq."+dni+",dni_rep2.eq."+dni).limit(1);
+  return (data && data[0]) || null;
+}
+async function obtenerViaje(id){
+  const { data } = await sb.from("flota_viajes").select("*").eq("id", id).limit(1);
+  return (data && data[0]) || null;
+}
+async function generarProximoIdViaje(){
+  const { data } = await sb.from("flota_viajes").select("id").order("created_at",{ascending:false}).limit(50);
+  let max = 0;
+  (data||[]).forEach(function(r){
+    const m = /^V(\d+)$/.exec(r.id||"");
+    if(m) max = Math.max(max, parseInt(m[1],10));
+  });
+  return "V"+String(max+1).padStart(6,"0");
+}
+async function crearViaje(args){
+  const id = await generarProximoIdViaje();
+  const esVerd = normNotif(args.recorrido).indexOf("verduleria")!==-1;
+  const nowIso = new Date().toISOString();
+  const fila = {
+    id: id, fecha: nowIso.slice(0,10), recorrido: args.recorrido,
+    dni_rep1: args.dni1, nombre_rep1: args.nombre1, dni_rep2: args.dni2||null, nombre_rep2: args.nombre2||null,
+    hora_salida: nowIso, estado:"ACTIVO", celular_id: celularId,
+    fase_verd: esVerd ? "SALIDA_MERCADO" : "",
+  };
+  const { error } = await sb.from("flota_viajes").insert(fila);
+  if(error) throw new Error(error.message);
+  const gps = validarDistanciaLocal("FABRICA", args.lat, args.lon);
+  await sb.from("flota_registros_qr").insert({ts:nowIso, id_viaje:id, sucursal:"FABRICA", evento:"SALIDA FABRICA", gps_obs:textoGps(gps), recorrido:args.recorrido});
+  return id;
+}
+async function obtenerProximoEvento(idViaje, sucursal){
+  const { data } = await sb.from("flota_registros_qr").select("evento").eq("id_viaje", idViaje).eq("sucursal", sucursal).order("ts",{ascending:false}).limit(1);
+  const ultimo = data && data[0] ? String(data[0].evento||"").toUpperCase() : "";
+  return ultimo==="LLEGADA" ? "SALIDA" : "LLEGADA";
+}
+async function registrarEvento(args){
+  const viaje = await obtenerViaje(args.idViaje);
+  if(!viaje) throw new Error("El viaje no existe.");
+  if(viaje.estado!=="ACTIVO") throw new Error("El viaje ya fue finalizado.");
+  const proximo = await obtenerProximoEvento(args.idViaje, args.sucursal);
+  if(args.evento!==proximo) throw new Error("Corresponde registrar: "+proximo);
+  const gps = validarDistanciaLocal(args.sucursal, args.lat, args.lon);
+  await sb.from("flota_registros_qr").insert({ts:new Date().toISOString(), id_viaje:args.idViaje, sucursal:args.sucursal, evento:args.evento, gps_obs:textoGps(gps), recorrido:viaje.recorrido});
+}
+async function finalizarViaje(idViaje, lat, lon){
+  const viaje = await obtenerViaje(idViaje);
+  if(!viaje) throw new Error("El viaje no existe.");
+  if(viaje.estado!=="ACTIVO") throw new Error("El viaje ya fue finalizado.");
+  const nowIso = new Date().toISOString();
+  const gps = validarDistanciaLocal("FABRICA", lat, lon);
+  const esVerd = normNotif(viaje.recorrido).indexOf("verduleria")!==-1;
+  let evento = "REGRESO FABRICA";
+  if(esVerd && (viaje.fase_verd===""||viaje.fase_verd==="SALIDA_MERCADO")){
+    evento = "SALIDA MERCADO";
+    await sb.from("flota_viajes").update({fase_verd:"SALIDA_MERCADO"}).eq("id", idViaje);
+    await actualizarVizVerd(idViaje, "SALIDA_MERCADO", nowIso, null);
+  } else {
+    await sb.from("flota_viajes").update({hora_llegada:nowIso, estado:"FINALIZADO"}).eq("id", idViaje);
+    if(esVerd) await actualizarVizVerd(idViaje, "REGRESO_FABRICA", null, nowIso);
+  }
+  await sb.from("flota_registros_qr").insert({ts:nowIso, id_viaje:idViaje, sucursal:"FABRICA", evento:evento, gps_obs:textoGps(gps), recorrido:viaje.recorrido});
+}
+async function registrarFaseVerduleria(idViaje, fase, lat, lon){
+  const viaje = await obtenerViaje(idViaje);
+  if(!viaje) throw new Error("No se encontró el viaje.");
+  const nowIso = new Date().toISOString();
+  const gps = validarDistanciaLocal("FABRICA", lat, lon);
+  if(fase==="LLEGADA_MERCADO"){
+    await sb.from("flota_registros_qr").insert({ts:nowIso, id_viaje:idViaje, sucursal:"FABRICA", evento:"LLEGADA MERCADO", gps_obs:textoGps(gps), recorrido:viaje.recorrido});
+    await sb.from("flota_viajes").update({fase_verd:"LLEGADA_MERCADO"}).eq("id", idViaje);
+    await actualizarVizVerd(idViaje, "LLEGADA_MERCADO", null, nowIso);
+    return {ok:true, msg:"Llegada del mercado registrada. Iniciando armado."};
+  }
+  if(fase==="FIN_ARMADO"){
+    await sb.from("flota_registros_qr").insert({ts:nowIso, id_viaje:idViaje, sucursal:"FABRICA", evento:"FIN ARMADO", gps_obs:textoGps(gps), recorrido:viaje.recorrido});
+    await sb.from("flota_viajes").update({fase_verd:"FIN_ARMADO"}).eq("id", idViaje);
+    await actualizarVizVerd(idViaje, "FIN_ARMADO", null, nowIso);
+    return {ok:true, msg:"Armado finalizado. ¡Listo para el reparto!"};
+  }
+  throw new Error("Fase desconocida: "+fase);
+}
+async function actualizarVizVerd(idViaje, fase, horaInicio, horaFin){
+  try{
+    const hoy = new Date().toISOString().slice(0,10);
+    const nombreFase = fase==="SALIDA_MERCADO"?"Mercado":fase==="LLEGADA_MERCADO"?"Armado":fase==="FIN_ARMADO"?"Reparto":null;
+    if(!nombreFase) return;
+    const { data } = await sb.from("flota_viz_verd").select("*").eq("fecha",hoy).eq("id_viaje",idViaje).eq("fase",nombreFase).limit(1);
+    const cambios = {fecha:hoy, fase:nombreFase, id_viaje:idViaje};
+    if(horaInicio) cambios.hora_inicio = horaInicio;
+    if(horaFin) cambios.hora_fin = horaFin;
+    cambios.estado = fase==="SALIDA_MERCADO"?"🏪 En mercado":fase==="LLEGADA_MERCADO"?"⚙️ Armando":"🚚 En ruta";
+    if(data && data[0]) await sb.from("flota_viz_verd").update(cambios).eq("id", data[0].id);
+    else await sb.from("flota_viz_verd").insert(cambios);
+  }catch(e){ console.warn("viz_verd:", e); }
+}
+
+function distanciaMetros(lat1,lon1,lat2,lon2){
+  const R=6371000, rad=Math.PI/180;
+  const dLat=(lat2-lat1)*rad, dLon=(lon2-lon1)*rad;
+  const a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function validarDistanciaLocal(sucursalNombre, lat, lon){
+  const res={tieneGps:false,tieneCoordSucursal:false,distanciaM:null,dentroDeRango:null};
+  if(lat==null||lon==null||isNaN(lat)||isNaN(lon)) return res;
+  res.tieneGps = true;
+  const nombreBuscado = sucursalNombre==="FABRICA" ? "Fábrica" : sucursalNombre;
+  const s = CACHE_SUCURSALES.find(function(x){return normNotif(x.nombre)===normNotif(nombreBuscado);});
+  if(!s || s.lat==null || s.lon==null) return res;
+  res.tieneCoordSucursal = true;
+  const d = distanciaMetros(lat, lon, s.lat, s.lon);
+  res.distanciaM = Math.round(d);
+  res.dentroDeRango = d <= RADIO_TOLERANCIA_METROS;
+  return res;
+}
+function textoGps(gps){
+  if(gps.dentroDeRango===false) return "GPS: fuera de rango ("+gps.distanciaM+"m)";
+  if(gps.dentroDeRango===true) return "GPS: OK ("+gps.distanciaM+"m)";
+  return "GPS: sin datos";
+}
+function obtenerUbicacion(){
+  return new Promise(function(resolve){
+    if(!navigator.geolocation){ resolve({lat:null,lon:null}); return; }
+    let resuelto=false;
+    const fin = function(r){ if(!resuelto){ resuelto=true; resolve(r); } };
+    setTimeout(function(){fin({lat:null,lon:null});}, 12000);
+    try{
+      navigator.geolocation.getCurrentPosition(
+        function(pos){fin({lat:pos.coords.latitude, lon:pos.coords.longitude});},
+        function(){fin({lat:null,lon:null});},
+        {enableHighAccuracy:true, timeout:10000, maximumAge:0}
+      );
+    }catch(e){ fin({lat:null,lon:null}); }
+  });
+}
+function confirmarFueraDeRango(distanciaM){
+  return new Promise(function(resolve){
+    const overlay=document.createElement("div");
+    overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px";
+    overlay.innerHTML='<div style="background:#132340;border:1.5px solid #f59e0b;border-radius:14px;padding:24px 20px;max-width:340px;text-align:center">'+
+      '<div style="font-size:2.2rem;margin-bottom:10px">📍⚠️</div>'+
+      '<div style="font-weight:800;color:#fbbf24;font-size:1.02rem;margin-bottom:8px">Estás lejos de la sucursal</div>'+
+      '<div style="font-size:.88rem;color:#94a3b8;margin-bottom:18px;line-height:1.5">Detectamos que estás a unos <b style="color:#f1f5f9">'+Math.round(distanciaM)+' metros</b> del punto registrado. Si es correcto, podés confirmar igual.</div>'+
+      '<div style="display:flex;gap:10px">'+
+      '<button id="btn-cancel-gps" style="flex:1;padding:12px;border-radius:9px;border:1px solid #1e3a5c;background:transparent;color:#94a3b8;font-weight:700;cursor:pointer">Cancelar</button>'+
+      '<button id="btn-confirm-gps" style="flex:1;padding:12px;border-radius:9px;border:none;background:#f59e0b;color:#000;font-weight:700;cursor:pointer">Confirmar igual</button>'+
+      '</div></div>';
+    document.body.appendChild(overlay);
+    $("btn-cancel-gps").onclick=function(){ document.body.removeChild(overlay); resolve(false); };
+    $("btn-confirm-gps").onclick=function(){ document.body.removeChild(overlay); resolve(true); };
+  });
+}
+function chequearUbicacion(sucursal){
+  return obtenerUbicacion().then(function(ubic){
+    if(ubic.lat===null) return {lat:null, lon:null, continuar:true};
+    const gps = validarDistanciaLocal(sucursal, ubic.lat, ubic.lon);
+    if(gps.dentroDeRango===false){
+      return confirmarFueraDeRango(gps.distanciaM).then(function(c){ return {lat:ubic.lat, lon:ubic.lon, continuar:c}; });
+    }
+    return {lat:ubic.lat, lon:ubic.lon, continuar:true};
+  });
+}
+
+function setLoading(txt){ $("contenido").innerHTML = '<div class="loader-wrap"><div class="spinner"></div><div class="loader-text">'+escHtml(txt)+'</div></div>'; }
+function showExito(titulo, val, sub){
+  $("contenido").innerHTML = '<div class="card"><div class="estado-ok"><span class="estado-ok-icon">✅</span>'+
+    '<div class="estado-ok-title">'+escHtml(titulo)+'</div>'+
+    '<div class="estado-ok-val">'+escHtml(val)+'</div>'+
+    '<div class="estado-ok-sub">'+escHtml(sub)+'</div></div>'+
+    '<button class="btn btn-primary" onclick="volverAlMenu()">↩️ Volver</button></div>';
+}
+function showError(e){
+  const msg = typeof e==="string" ? e : (e && e.message ? e.message : "Error desconocido");
+  $("contenido").innerHTML = '<div class="card"><div class="estado-warn"><span class="estado-warn-icon">⚠️</span>'+
+    '<div class="estado-warn-title">Error</div>'+
+    '<div class="estado-warn-sub">'+escHtml(msg)+'</div></div>'+
+    '<button class="btn btn-primary" onclick="volverAlMenu()">↩️ Reintentar</button></div>';
+}
+function volverAlMenu(){
+  viajeActivo = localStorage.getItem("viajeActivo_cv2") || null;
+  render();
+}
+
+async function render(){
+  if(viajeActivo){
+    const v = await obtenerViaje(viajeActivo);
+    if(!v || v.estado!=="ACTIVO"){ localStorage.removeItem("viajeActivo_cv2"); viajeActivo=null; }
+  }
+
+  if(esFabrica()){
+    if(!viajeActivo){
+      renderFabricaSinViaje();
+    } else {
+      const v = await obtenerViaje(viajeActivo);
+      if(normNotif(v.recorrido).indexOf("verduleria")!==-1) renderFabricaVerduleria(v);
+      else renderFabricaNormal(v);
+    }
+  } else {
+    if(!viajeActivo){
+      renderSucursalSinViaje();
+    } else {
+      const v = await obtenerViaje(viajeActivo);
+      await renderSucursalConViaje(v);
+    }
+  }
+}
+
+function renderFabricaSinViaje(){
+  let html = '<div class="card" style="margin-bottom:12px">'+
+    '<div class="card-title">🔄 ¿Ya tenés un viaje activo?</div>'+
+    '<p style="font-size:.85rem;color:var(--gray);margin-bottom:14px">Si ya saliste y perdiste el registro en este celular, ingresá tu DNI para recuperarlo.</p>'+
+    '<div class="field"><label>Tu DNI</label><input type="number" id="dni-recover" placeholder="Ej: 30123456"/></div>'+
+    '<div id="err-recover" class="err-msg"></div>'+
+    '<button class="btn btn-primary" onclick="recuperarViajePorDni()">🔍 Buscar mi viaje activo</button></div>';
+
+  html += '<div class="card"><div class="card-title">🚛 Iniciar recorrido</div>'+
+    '<div class="field"><label>Tu DNI (repartidor principal)</label><input type="number" id="dni1" placeholder="Ej: 30123456"/></div>'+
+    '<div class="field"><label>DNI acompañante (opcional)</label><input type="number" id="dni2" placeholder="Dejar vacío si vas solo"/></div>'+
+    '<div class="field"><label>Recorrido</label><select id="rec">'+CACHE_RECORRIDOS.map(function(r){return '<option>'+escHtml(r)+'</option>';}).join("")+'</select></div>'+
+    '<div id="err-nuevo" class="err-msg"></div>'+
+    '<button class="btn btn-green" onclick="iniciarViaje()">✅ Confirmar salida</button></div>';
+
+  $("contenido").innerHTML = html;
+}
+
+async function recuperarViajePorDni(){
+  const dni = ($("dni-recover").value||"").trim();
+  if(!dni){ $("err-recover").textContent="Ingresá tu DNI."; return; }
+  setLoading("Buscando viaje activo...");
+  const v = await buscarViajeActivoPorDni(dni);
+  if(v){
+    localStorage.setItem("viajeActivo_cv2", v.id);
+    viajeActivo = v.id;
+    showExito("✅ Viaje recuperado", v.id, "El viaje fue restaurado en este celular");
+  } else {
+    $("contenido").innerHTML = '<div class="card"><div class="estado-warn">'+
+      '<span class="estado-warn-icon">🔍</span>'+
+      '<div class="estado-warn-title">Sin viaje activo</div>'+
+      '<div class="estado-warn-sub">No se encontró ningún viaje ACTIVO para ese DNI.</div>'+
+      '</div><button class="btn btn-primary" style="margin-top:14px" onclick="volverAlMenu()">↩ Volver</button></div>';
+  }
+}
+
+async function iniciarViaje(){
+  const dni1 = ($("dni1").value||"").trim();
+  const dni2 = ($("dni2").value||"").trim();
+  const recorrido = $("rec").value;
+  $("err-nuevo").textContent = "";
+  if(!dni1 || !recorrido){ $("err-nuevo").textContent="Ingresá tu DNI y elegí un recorrido."; return; }
+
+  const btn = document.querySelector(".btn-green");
+  if(btn){ btn.disabled=true; btn.textContent="Verificando..."; }
+
+  const rep1 = await buscarRepartidorPorDni(dni1);
+  if(!rep1){ $("err-nuevo").textContent="No encontramos ese DNI entre los repartidores."; if(btn){btn.disabled=false;btn.textContent="✅ Confirmar salida";} return; }
+  let rep2 = null;
+  if(dni2){
+    rep2 = await buscarRepartidorPorDni(dni2);
+    if(!rep2){ $("err-nuevo").textContent="El DNI del acompañante no se encontró."; if(btn){btn.disabled=false;btn.textContent="✅ Confirmar salida";} return; }
+  }
+  const yaActivo1 = await buscarViajeActivoPorDni(dni1);
+  if(yaActivo1){ $("err-nuevo").textContent = rep1.nombre+" ya tiene un viaje activo ("+yaActivo1.id+")."; if(btn){btn.disabled=false;btn.textContent="✅ Confirmar salida";} return; }
+  if(rep2){
+    const yaActivo2 = await buscarViajeActivoPorDni(dni2);
+    if(yaActivo2){ $("err-nuevo").textContent = rep2.nombre+" ya tiene un viaje activo ("+yaActivo2.id+")."; if(btn){btn.disabled=false;btn.textContent="✅ Confirmar salida";} return; }
+  }
+
+  if(btn) btn.textContent="Verificando ubicación...";
+  const ubic = await chequearUbicacion("FABRICA");
+  if(!ubic.continuar){ if(btn){btn.disabled=false;btn.textContent="✅ Confirmar salida";} return; }
+
+  setLoading("Registrando salida...");
+  try{
+    const idViaje = await crearViaje({dni1:dni1, nombre1:rep1.nombre, dni2:dni2, nombre2:rep2?rep2.nombre:null, recorrido:recorrido, lat:ubic.lat, lon:ubic.lon});
+    localStorage.setItem("viajeActivo_cv2", idViaje);
+    viajeActivo = idViaje;
+    showExito("¡Salida registrada!", idViaje, "El recorrido fue iniciado correctamente");
+  }catch(e){ showError(e); }
+}
+
+function renderFabricaNormal(v){
+  $("contenido").innerHTML = '<div class="card"><div class="card-title">🏁 Viaje en curso</div>'+
+    '<div class="viaje-info">'+
+    '<div class="viaje-info-row"><span class="vi-label">ID</span><span class="viaje-id">'+escHtml(v.id)+'</span></div>'+
+    '<div class="viaje-info-row"><span class="vi-label">Recorrido</span><span class="vi-val">'+escHtml(v.recorrido)+'</span></div>'+
+    '<div class="viaje-info-row"><span class="vi-label">Repartidor</span><span class="vi-val">'+escHtml(v.nombre_rep1)+'</span></div>'+
+    '</div>'+
+    '<button class="btn btn-danger" onclick="accionFinalizarViaje()">🔴 Finalizar viaje · Regreso a fábrica</button></div>';
+}
+
+function renderFabricaVerduleria(v){
+  const fase = String(v.fase_verd||"").toUpperCase();
+  let html = '<div class="card"><div class="card-title">🥦 Verdulería — En progreso</div>'+
+    '<div class="viaje-info">'+
+    '<div class="viaje-info-row"><span class="vi-label">ID</span><span class="viaje-id">'+escHtml(v.id)+'</span></div>'+
+    '<div class="viaje-info-row"><span class="vi-label">Repartidor</span><span class="vi-val">'+escHtml(v.nombre_rep1)+'</span></div>'+
+    '</div>';
+
+  if(fase===""||fase==="SALIDA_MERCADO"){
+    html += '<div class="fase-banner fase-mercado"><span class="fase-icon">🏪</span>'+
+      '<div class="fase-titulo">En el mercado</div>'+
+      '<div class="fase-desc">Escaneá cuando llegues de vuelta a fábrica con la mercadería.</div></div>'+
+      '<button class="btn btn-orange" onclick="accionRegistrarFase(\'LLEGADA_MERCADO\')">📦 Llegué del mercado</button></div>';
+  } else if(fase==="LLEGADA_MERCADO"){
+    html += '<div class="fase-banner fase-armado"><span class="fase-icon">⚙️</span>'+
+      '<div class="fase-titulo">Armando pedidos</div>'+
+      '<div class="fase-desc">Escaneá cuando termines el armado y estés listo para salir.</div></div>'+
+      '<button class="btn btn-primary" onclick="accionRegistrarFase(\'FIN_ARMADO\')">✅ Armado terminado — Saliendo al reparto</button></div>';
+  } else {
+    html += '<div class="fase-banner fase-reparto"><span class="fase-icon">🚚</span>'+
+      '<div class="fase-titulo">En reparto</div>'+
+      '<div class="fase-desc">Escaneá cuando regreses a fábrica para cerrar el viaje.</div></div>'+
+      '<button class="btn btn-danger" onclick="accionFinalizarViaje()">🔴 Regresé a fábrica · Cerrar viaje</button></div>';
+  }
+  $("contenido").innerHTML = html;
+}
+
+async function accionRegistrarFase(fase){
+  const btn = document.querySelector(".btn-orange, .btn-primary");
+  if(btn){ btn.disabled=true; btn.textContent="Verificando ubicación..."; }
+  const ubic = await chequearUbicacion("FABRICA");
+  if(!ubic.continuar){ if(btn){btn.disabled=false;btn.textContent="Reintentar";} return; }
+  setLoading(fase==="LLEGADA_MERCADO"?"Registrando llegada del mercado...":"Registrando fin de armado...");
+  try{
+    const res = await registrarFaseVerduleria(viajeActivo, fase, ubic.lat, ubic.lon);
+    showExito(res.msg||"Registrado", viajeActivo, "");
+  }catch(e){ showError(e); }
+}
+
+async function accionFinalizarViaje(){
+  if(!confirm("¿Confirmar regreso a fábrica y finalizar viaje "+viajeActivo+"?")) return;
+  const idFinalizado = viajeActivo;
+  setLoading("Verificando ubicación...");
+  const ubic = await chequearUbicacion("FABRICA");
+  if(!ubic.continuar){ volverAlMenu(); return; }
+  setLoading("Finalizando viaje...");
+  try{
+    await finalizarViaje(idFinalizado, ubic.lat, ubic.lon);
+    const viajeFresco = await obtenerViaje(idFinalizado);
+    if(viajeFresco && viajeFresco.estado==="ACTIVO"){
+      // Era Verdulería saliendo al mercado — sigue activo, no se borra el localStorage
+      showExito("¡Salida al mercado registrada!", idFinalizado, "Escaneá de nuevo cuando vuelvas con la mercadería");
+    } else {
+      localStorage.removeItem("viajeActivo_cv2"); viajeActivo=null;
+      showExito("¡Viaje finalizado!", "Regreso a fábrica ✓", "El viaje "+idFinalizado+" fue cerrado");
+    }
+  }catch(e){ showError(e); }
+}
+
+function renderSucursalSinViaje(){
+  const html = '<div class="card"><div class="estado-warn">'+
+    '<span class="estado-warn-icon">⏳</span>'+
+    '<div class="estado-warn-title">Sin viaje activo</div>'+
+    '<div class="estado-warn-sub">Si ya saliste de fábrica y se perdió el registro en este celular, ingresá tu DNI para recuperarlo.</div>'+
+    '</div>'+
+    '<div class="field" style="margin-top:16px"><label>Tu DNI</label><input type="number" id="dni-recover" placeholder="Ej: 30123456"/></div>'+
+    '<div id="err-recover" class="err-msg"></div>'+
+    '<button class="btn btn-primary" onclick="recuperarViajePorDni()">🔍 Recuperar viaje</button></div>';
+  $("contenido").innerHTML = html;
+}
+
+async function renderSucursalConViaje(v){
+  $("contenido").innerHTML = '<div class="card"><div class="card-title">📍 Registrar evento</div>'+
+    '<div class="viaje-info">'+
+    '<div class="viaje-info-row"><span class="vi-label">Viaje</span><span class="viaje-id">'+escHtml(v.id)+'</span></div>'+
+    '<div class="viaje-info-row"><span class="vi-label">Recorrido</span><span class="vi-val">'+escHtml(v.recorrido)+'</span></div>'+
+    '</div><div id="contenedorEvento">Cargando...</div>'+
+    '<button class="btn btn-primary" onclick="accionRegistrarEvento()" id="btn-reg">Registrar</button></div>';
+
+  const proximo = await obtenerProximoEvento(v.id, SUCURSAL_OFICIAL);
+  const htmlEv = proximo==="LLEGADA"
+    ? '<div class="field"><label>Tipo de registro</label><div class="radio-group">'+
+        '<label class="radio-opt"><input type="radio" name="evento" value="LLEGADA" checked>'+
+        '<div class="radio-label llegada"><span class="radio-icon">🟢</span><span class="radio-text">Llegada</span></div></label></div></div>'
+    : '<div class="field"><label>Tipo de registro</label><div class="radio-group">'+
+        '<label class="radio-opt"><input type="radio" name="evento" value="SALIDA" checked>'+
+        '<div class="radio-label salida"><span class="radio-icon">🟡</span><span class="radio-text">Salida</span></div></label></div></div>';
+  const cont = $("contenedorEvento");
+  if(cont) cont.innerHTML = htmlEv;
+}
+
+async function accionRegistrarEvento(){
+  const sel = document.querySelector('input[name="evento"]:checked');
+  if(!sel){ alert("No se pudo determinar el evento."); return; }
+  const tipo = sel.value;
+  const btn = $("btn-reg");
+  if(btn){ btn.disabled=true; btn.textContent="Verificando ubicación..."; }
+  const ubic = await chequearUbicacion(SUCURSAL_OFICIAL);
+  if(!ubic.continuar){ if(btn){btn.disabled=false;btn.textContent="Registrar";} return; }
+  if(btn) btn.textContent="Registrando...";
+  try{
+    await registrarEvento({idViaje:viajeActivo, sucursal:SUCURSAL_OFICIAL, evento:tipo, lat:ubic.lat, lon:ubic.lon});
+    showExito(tipo==="LLEGADA"?"¡Llegada registrada!":"¡Salida registrada!", SUCURSAL_OFICIAL, tipo==="LLEGADA"?"Llegada confirmada ✓":"Salida confirmada ✓");
+  }catch(e){ if(btn){btn.disabled=false;btn.textContent="Registrar";} showError(e); }
+}
+
+cargarInicial();
+</script>
+</body>
+</html>
