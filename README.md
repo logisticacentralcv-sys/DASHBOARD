@@ -15,7 +15,7 @@ el navegador.
 
 | Archivo | Qué hace | Estado |
 |---|---|---|
-| `flota.html` | Hub — navegación entre módulos | ✅ Activo |
+| `index.html` | Hub — navegación entre módulos | ✅ Activo |
 | `flota-operativo.html` | Dashboard operativo (carga, tiempos, paradas, Verdulería, histórico) | ✅ Activo |
 | `qr.html` | Página que escanea el repartidor (fábrica/sucursal) | ✅ Activo |
 | `flota-mantenimiento.html` | Mantenimiento de camiones (service, VTV, seguros) | 🔜 Por hacer |
@@ -27,7 +27,7 @@ el navegador.
    todos, a propósito, para no depender de un build tool.
 2. Usá SIEMPRE tablas con el prefijo del módulo (ej: `flota_mant_*`,
    `flota_insumos_*`) para que nunca choquen entre sí ni con TransferApp.
-3. Agregá la tarjeta correspondiente en `flota.html`.
+3. Agregá la tarjeta correspondiente en `index.html`.
 4. Si el módulo necesita datos que ya existen en otra tabla (sucursales,
    usuarios/repartidores, recorridos), **leé de ahí directo** — no
    dupliques el padrón.
