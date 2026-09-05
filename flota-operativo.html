@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Operativo — Flota Campo Verde</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:#0b1624; --surface:#0f1f35; --card:#132340; --card2:#162848;
+  --border:#1e3a5c; --border2:#243f65;
+  --accent:#e8a020; --blue:#2563eb; --blue2:#3b82f6;
+  --green:#22c55e; --red:#ef4444; --yellow:#f59e0b; --orange:#f97316;
+  --gray:#4e6a8a; --gray2:#64748b; --light:#94a3b8; --white:#f1f5f9;
+  --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--light);min-height:100vh;font-size:15px}
+
+.topbar{
+  background:linear-gradient(90deg,#0a1828 0%,#0f2240 100%);
+  border-bottom:2px solid var(--accent);
+  padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  position:sticky;top:0;z-index:100;
+}
+.topbar-left{display:flex;align-items:center;gap:18px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand a{color:inherit;text-decoration:none;font-size:.85rem;opacity:.7}
+.brand-icon{font-size:1.6rem}
+.brand-name{font-size:1.25rem;font-weight:800;color:var(--white);letter-spacing:.02em}
+.brand-name span{color:var(--accent)}
+.divider{width:1px;height:28px;background:var(--border2)}
+.ts-badge{background:rgba(232,160,32,.08);border:1px solid rgba(232,160,32,.2);
+  padding:6px 14px;border-radius:20px;font-size:.85rem;color:var(--light)}
+.ts-badge b{color:var(--accent)}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.btn{padding:9px 20px;border-radius:8px;border:1px solid var(--border2);
+  background:rgba(255,255,255,.04);color:var(--light);font-size:.88rem;cursor:pointer;transition:.18s;font-family:var(--font)}
+.btn:hover{background:rgba(232,160,32,.15);border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn-primary:hover{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+main{padding:24px 28px;display:flex;flex-direction:column;gap:28px;max-width:1500px;margin:0 auto}
+
+.esc-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.esc-label{font-size:.8rem;color:var(--gray2);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+.seg{display:flex;border:1px solid var(--border2);border-radius:9px;overflow:hidden;background:var(--surface)}
+.seg-btn{padding:10px 28px;background:transparent;border:none;color:var(--gray2);
+  font-size:.95rem;cursor:pointer;transition:.18s;white-space:nowrap;font-family:var(--font);font-weight:500}
+.seg-btn.active{background:var(--blue);color:#fff}
+.seg-btn:hover:not(.active){background:rgba(255,255,255,.06);color:var(--light)}
+
+.sec-header{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.sec-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.sec-title{font-size:.88rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--accent)}
+.sec-sub{font-size:.8rem;color:var(--gray2);margin-left:auto}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:13px;
+  padding:20px 22px;position:relative;overflow:hidden;transition:.2s}
+.kpi:hover{border-color:var(--border2);transform:translateY(-2px)}
+.kpi-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:13px 13px 0 0}
+.kpi-icon{font-size:1.7rem;margin-bottom:10px;display:block}
+.kpi-val{font-size:2.4rem;font-weight:800;color:var(--white);line-height:1;letter-spacing:-.02em}
+.kpi-lbl{font-size:.78rem;color:var(--gray2);text-transform:uppercase;letter-spacing:.07em;margin-top:7px;font-weight:600}
+.kpi-sub{font-size:.8rem;color:var(--gray);margin-top:4px}
+
+.sbox{background:var(--card);border:1px solid var(--border);border-radius:13px;overflow:hidden}
+.tbl-wrap{overflow-x:auto}
+
+table{width:100%;border-collapse:collapse;font-size:1rem}
+thead tr{background:linear-gradient(90deg,#0f2040,#132848)}
+th{color:var(--accent);text-transform:uppercase;letter-spacing:.07em;font-size:.78rem;
+  padding:14px 18px;text-align:left;white-space:nowrap;font-weight:700;
+  border-bottom:1px solid var(--border2)}
+td{padding:14px 18px;border-bottom:1px solid rgba(30,58,92,.4);vertical-align:middle;font-size:1rem}
+tbody tr:hover td{background:rgba(37,99,235,.06)}
+tbody tr:last-child td{border-bottom:none}
+
+.rec-name{font-weight:700;color:var(--white);font-size:1.05rem}
+.hora-cell{display:flex;flex-direction:column;gap:3px}
+.hora-label{font-size:.7rem;text-transform:uppercase;color:var(--gray2);letter-spacing:.06em}
+.hora-main{color:var(--white);font-weight:700;font-size:1.05rem;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.hora-main.dim{color:var(--gray2);font-weight:400}
+.on-time{color:var(--green);font-weight:700}
+.late{color:var(--red);font-weight:700}
+
+.prog-wrap{display:flex;align-items:center;gap:8px;min-width:120px}
+.prog-bg{flex:1;height:9px;background:rgba(255,255,255,.07);border-radius:5px;overflow:hidden;min-width:70px}
+.prog-fill{height:100%;border-radius:5px;transition:width .5s ease}
+.prog-pct{font-size:.88rem;font-weight:800;width:42px;text-align:right;white-space:nowrap}
+
+.badge{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;
+  border-radius:20px;font-size:.8rem;font-weight:700;white-space:nowrap;letter-spacing:.02em}
+.badge::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.75;flex-shrink:0}
+.b-green{background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
+.b-blue{background:rgba(37,99,235,.12);color:#60a5fa;border:1px solid rgba(37,99,235,.2)}
+.b-red{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+.b-yellow{background:rgba(245,158,11,.1);color:#fbbf24;border:1px solid rgba(245,158,11,.2)}
+.b-gray{background:rgba(100,116,139,.1);color:#94a3b8;border:1px solid rgba(100,116,139,.2)}
+
+.chip{display:inline-block;background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.2);
+  color:#93c5fd;padding:3px 10px;border-radius:5px;font-size:.8rem;font-family:monospace;font-weight:700}
+
+.carga-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;padding:18px}
+.carga-card{background:var(--card2);border:1px solid var(--border2);border-radius:11px;padding:18px}
+.carga-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:8px}
+.carga-card-title{font-weight:700;color:var(--white);font-size:1.1rem}
+.carga-card-tag{font-size:.75rem;color:var(--gray2);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.carga-stat-row{display:flex;justify-content:space-between;align-items:center;
+  padding:9px 0;border-bottom:1px solid rgba(30,58,92,.5)}
+.carga-stat-row:last-of-type{border-bottom:none}
+.carga-stat-label{font-size:.88rem;color:var(--light)}
+.carga-stat-val{font-size:.95rem;font-weight:700;color:var(--white)}
+.occ-section{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+.occ-row{display:flex;flex-direction:column;gap:5px}
+.occ-header{display:flex;justify-content:space-between;align-items:center}
+.occ-label{font-size:.78rem;color:var(--gray2);text-transform:uppercase;letter-spacing:.06em}
+.occ-val{font-size:.92rem;font-weight:800}
+.occ-bar{height:10px;background:rgba(255,255,255,.07);border-radius:5px;overflow:hidden}
+.occ-fill{height:100%;border-radius:5px;transition:width .5s}
+
+.verd-card{background:linear-gradient(135deg,rgba(34,197,94,.07),rgba(20,83,45,.09));
+  border:1px solid rgba(34,197,94,.2);border-radius:13px;padding:18px 22px}
+.verd-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.verd-icon{font-size:1.5rem}
+.verd-title{font-size:1.05rem;font-weight:700;color:var(--white)}
+.verd-sub{font-size:.78rem;color:var(--gray2)}
+
+.flota-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;padding:18px}
+.flota-item{background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:16px 18px}
+.flota-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.flota-id{font-size:1.05rem;font-weight:800;color:var(--white);font-family:monospace}
+.flota-status{font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em}
+.f-avail{background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
+.f-unavail{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+.flota-kg{font-size:.85rem;color:var(--gray2);margin-top:4px}
+.flota-kg span{color:var(--light);font-weight:600}
+
+.loader-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px;gap:18px}
+.spinner{width:38px;height:38px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .65s linear infinite}
+.loader-text{font-size:.95rem;color:var(--gray2)}
+.prog-bar-wrap{width:290px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.prog-bar-inner{height:100%;background:linear-gradient(90deg,var(--blue),var(--accent));transition:width .35s}
+
+.empty-state{display:flex;flex-direction:column;align-items:center;padding:46px;gap:12px}
+.empty-state-icon{font-size:2.8rem;opacity:.3}
+.empty-state-text{font-size:.92rem;color:var(--gray2);text-align:center;line-height:1.6}
+
+.module-error{display:flex;flex-direction:column;align-items:center;padding:36px;gap:10px;
+  background:rgba(239,68,68,.05);border:1px dashed rgba(239,68,68,.3);border-radius:13px}
+.module-error-icon{font-size:2rem}
+.module-error-text{font-size:.85rem;color:#f87171;text-align:center;max-width:480px}
+.module-error-detail{font-size:.72rem;color:var(--gray2);font-family:monospace;text-align:center;max-width:520px;word-break:break-word}
+
+.verd-fases-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.verd-fase-card{background:var(--card);border:1px solid var(--border);border-radius:13px;
+  padding:20px;position:relative;overflow:hidden}
+.verd-fase-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:13px 13px 0 0}
+.verd-fase-icon{font-size:2rem;margin-bottom:8px;display:block}
+.verd-fase-nombre{font-size:1rem;font-weight:800;color:var(--white);margin-bottom:12px}
+.verd-fase-row{display:flex;justify-content:space-between;padding:6px 0;
+  border-bottom:1px solid rgba(30,58,92,.4);font-size:.88rem}
+.verd-fase-row:last-of-type{border-bottom:none}
+.verd-fase-lbl{color:var(--gray2)}
+.verd-fase-val{color:var(--white);font-weight:600;font-variant-numeric:tabular-nums}
+.verd-fase-estado{margin-top:12px;padding:6px 12px;border-radius:20px;
+  font-size:.78rem;font-weight:700;text-align:center;display:inline-block}
+.vf-pendiente{background:rgba(100,116,139,.1);color:#94a3b8;border:1px solid rgba(100,116,139,.2)}
+.vf-activo{background:rgba(245,158,11,.1);color:#fbbf24;border:1px solid rgba(245,158,11,.2)}
+.vf-ok{background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
+
+.hist-filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.hist-filter-label{font-size:.78rem;color:var(--gray2);text-transform:uppercase;letter-spacing:.08em}
+.hist-filter-select{background:var(--card2);border:1px solid var(--border2);color:var(--light);
+  padding:7px 14px;border-radius:7px;font-size:.85rem;font-family:var(--font);cursor:pointer}
+
+.paradas-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.paradas-kpi{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:16px 18px;position:relative;overflow:hidden}
+.paradas-kpi-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:11px 11px 0 0}
+.paradas-kpi-val{font-size:2rem;font-weight:800;line-height:1;letter-spacing:-.02em}
+.paradas-kpi-lbl{font-size:.75rem;color:var(--gray2);text-transform:uppercase;letter-spacing:.07em;margin-top:6px;font-weight:600}
+.paradas-kpi-sub{font-size:.78rem;color:var(--gray);margin-top:3px}
+
+.paradas-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px}
+.parada-card{background:var(--card);border:1px solid var(--border);border-radius:13px;overflow:hidden;display:flex;flex-direction:column}
+.parada-card-header{padding:16px 20px;background:linear-gradient(90deg,rgba(15,32,64,.8),rgba(19,36,64,.5));
+  border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.parada-card-title{font-weight:700;color:var(--white);font-size:1.05rem;display:flex;align-items:center;gap:8px}
+.parada-card-stats{display:flex;gap:18px;align-items:center}
+.parada-card-stat{text-align:right}
+.parada-card-stat-val{font-size:.9rem;font-weight:700;color:var(--white);font-variant-numeric:tabular-nums}
+.parada-card-stat-lbl{font-size:.65rem;color:var(--gray2);text-transform:uppercase;letter-spacing:.05em}
+.parada-col-header{display:grid;grid-template-columns:2fr 72px 72px 130px;gap:8px;padding:9px 20px;
+  font-size:.72rem;color:var(--gray2);text-transform:uppercase;letter-spacing:.07em;
+  border-bottom:1px solid rgba(30,58,92,.5);background:rgba(11,22,36,.4)}
+.parada-row{display:grid;grid-template-columns:2fr 72px 72px 130px;align-items:center;gap:8px;padding:13px 20px;
+  border-bottom:1px solid rgba(30,58,92,.3);transition:background .15s}
+.parada-row:last-child{border-bottom:none}
+.parada-row:hover{background:rgba(37,99,235,.05)}
+.parada-suc{font-size:1rem;color:var(--white);font-weight:600;white-space:normal;line-height:1.3}
+.parada-t{font-size:.92rem;font-variant-numeric:tabular-nums;font-family:monospace;color:var(--gray2);text-align:center}
+.parada-t-real{font-size:.98rem;color:var(--white);font-weight:700;text-align:center}
+.parada-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:700;white-space:nowrap}
+.pp-adelantado{background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
+.pp-atime{background:rgba(37,99,235,.12);color:#60a5fa;border:1px solid rgba(37,99,235,.2)}
+.pp-tarde{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+.pp-sin{background:rgba(100,116,139,.08);color:#64748b;border:1px solid rgba(100,116,139,.15)}
+
+@media(max-width:640px){
+  main{padding:14px 12px}
+  .kpi-val{font-size:1.9rem}
+  .carga-grid,.flota-grid,.paradas-grid{grid-template-columns:1fr}
+  td,th{padding:10px 10px;font-size:.9rem}
+  .parada-row,.parada-col-header{grid-template-columns:1fr 60px 60px 100px;gap:6px;padding:10px 12px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="brand">
+      <span class="brand-icon">🚚</span>
+      <span class="brand-name"><span>Campo Verde</span> · Operativo</span>
+    </div>
+    <a href="flota.html">&larr; Módulos</a>
+    <div class="divider"></div>
+    <div class="ts-badge">Actualizado: <b id="ts">—</b></div>
+  </div>
+  <div class="topbar-right">
+    <button class="btn" onclick="toggleSeccion('verd')" id="btn-verd">🥦 Verdulería</button>
+    <button class="btn" onclick="toggleSeccion('historico')" id="btn-hist">📊 Histórico</button>
+    <button class="btn btn-primary" onclick="cargar()" id="btn-refresh">↻ Actualizar</button>
+  </div>
+</div>
+
+<main>
+  <div class="esc-bar">
+    <span class="esc-label">Escenario:</span>
+    <div class="seg">
+      <button class="seg-btn active" id="seg-3"  onclick="setEsc('3')">3 Recorridos</button>
+      <button class="seg-btn"        id="seg-2"  onclick="setEsc('2')">2 Recorridos</button>
+      <button class="seg-btn"        id="seg-h"  onclick="setEsc('h')">🥚 Huevos</button>
+      <button class="seg-btn"        id="seg-c"  onclick="setEsc('c')">🧊 Congelados</button>
+      <button class="seg-btn"        id="seg-r"  onclick="setEsc('r')">🔁 Refuerzo</button>
+      <button class="seg-btn"        id="seg-s"  onclick="setEsc('s')">📦 Secos</button>
+    </div>
+  </div>
+
+  <div id="loading" class="loader-wrap">
+    <div class="spinner"></div>
+    <div class="loader-text" id="load-text">Conectando...</div>
+    <div class="prog-bar-wrap"><div class="prog-bar-inner" id="prog-bar" style="width:0%"></div></div>
+  </div>
+
+  <div id="contenido" style="display:none">
+    <section>
+      <div class="sec-header"><div class="sec-dot"></div><span class="sec-title">① Resumen del día</span><span class="sec-sub" id="kpi-date"></span></div>
+      <div class="kpi-grid" id="kpi-row"></div>
+    </section>
+    <section>
+      <div class="sec-header"><div class="sec-dot"></div><span class="sec-title">② Estado operativo en tiempo real</span><span class="sec-sub" id="viz-notice"></span></div>
+      <div class="sbox" id="box-operativo"></div>
+    </section>
+    <section>
+      <div class="sec-header"><div class="sec-dot"></div><span class="sec-title">③ Carga planificada</span></div>
+      <div id="carga-section"></div>
+    </section>
+    <section>
+      <div class="sec-header"><div class="sec-dot"></div><span class="sec-title">④ Estado de la flota</span></div>
+      <div class="sbox"><div class="flota-grid" id="flota-grid"></div></div>
+    </section>
+    <section>
+      <div class="sec-header">
+        <div class="sec-dot" style="background:var(--orange)"></div>
+        <span class="sec-title" style="color:var(--orange)">⑤ Tiempos de descarga en sucursales</span>
+        <span class="sec-sub" id="paradas-resumen"></span>
+      </div>
+      <div id="paradas-section"></div>
+    </section>
+    <section id="sec-verd" style="display:none">
+      <div class="sec-header">
+        <div class="sec-dot" style="background:var(--green)"></div>
+        <span class="sec-title" style="color:var(--green)">🥦 Verdulería — Seguimiento de fases</span>
+        <span class="sec-sub" id="verd-resumen"></span>
+      </div>
+      <div id="verd-section"></div>
+    </section>
+    <section id="sec-historico" style="display:none">
+      <div class="sec-header">
+        <div class="sec-dot" style="background:var(--blue2)"></div>
+        <span class="sec-title" style="color:var(--blue2)">⑦ Histórico de operaciones</span>
+        <span class="sec-sub" id="hist-resumen"></span>
+      </div>
+      <div id="hist-section"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════
+//  MÓDULO OPERATIVO — arquitectura:
+//  1) CAPA DE DATOS (fetch*): solo trae filas de Supabase, no sabe de HTML.
+//  2) CAPA DE CÓMPUTO (compute*): funciones puras, arman los datos que
+//     necesita cada sección a partir de lo que trajo la capa de datos.
+//  3) CAPA DE RENDER (render*): solo dibuja HTML. Cada una atrapa sus
+//     propios errores — si una sección falla, se ve una tarjeta de error
+//     ahí mismo y el resto del dashboard sigue andando.
+// ══════════════════════════════════════════════════════════════════════
+
+const SUPABASE_URL = "https://lrwwpulunfcavmvmwotd.supabase.co";
+const SUPABASE_KEY = "sb_publishable_SrUcYrDVBIOvZgF-DSPcyg_qV0LXEDQ";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let DATOS = null;
+let ESC = "3";
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function fmt(n,dec){ const d=dec===undefined?0:dec; return Number(n||0).toLocaleString("es-AR",{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function sum(arr,key){ let t=0; for(let i=0;i<arr.length;i++) t+=Number(arr[i][key])||0; return t; }
+function esTipo(txt,kw){ return String(txt||"").toLowerCase().indexOf(kw.toLowerCase())!==-1; }
+function hoyISO(){ return new Date().toISOString().slice(0,10); }
+function normNotif(s){ return (s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
+function segsToMmSs(s){ if(!s||s<=0) return "—"; const m=Math.floor(s/60), ss=Math.floor(s%60); return (m<10?"0":"")+m+":"+(ss<10?"0":"")+ss; }
+function horaDe(iso){ return iso ? new Date(iso).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}) : "—"; }
+
+function renderSeguro(elId, renderFn, nombreModulo){
+  const el = $(elId);
+  if(!el) return;
+  try{
+    el.innerHTML = renderFn();
+  }catch(e){
+    console.error("Error en módulo '"+nombreModulo+"':", e);
+    el.innerHTML = '<div class="module-error">'+
+      '<div class="module-error-icon">⚠️</div>'+
+      '<div class="module-error-text"><b>'+esc(nombreModulo)+'</b> no se pudo mostrar. El resto del dashboard sigue funcionando normal.</div>'+
+      '<div class="module-error-detail">'+esc(e.message||String(e))+'</div></div>';
+  }
+}
+
+async function fetchTabla(nombre, query){
+  try{
+    let q = sb.from(nombre).select("*");
+    if(query) q = query(q);
+    const { data, error } = await q;
+    if(error) throw error;
+    return data || [];
+  }catch(e){
+    console.warn("No se pudo leer '"+nombre+"':", e.message||e);
+    return [];
+  }
+}
+
+async function cargarDatos(){
+  const hoy = hoyISO();
+  const [cargaPlanificada, tiemposEstimados, camiones, viajes, registrosQR, vizVerd, historico] = await Promise.all([
+    fetchTabla("flota_carga_planificada", q=>q.eq("fecha",hoy)),
+    fetchTabla("flota_tiempos_estimados"),
+    fetchTabla("flota_camiones"),
+    fetchTabla("flota_viajes", q=>q.eq("fecha",hoy)),
+    fetchTabla("flota_registros_qr", q=>q.gte("ts", hoy+"T00:00:00")),
+    fetchTabla("flota_viz_verd", q=>q.eq("fecha",hoy)),
+    fetchTabla("flota_historico", q=>q.order("fecha",{ascending:false}).limit(500)),
+  ]);
+  return { cargaPlanificada, tiemposEstimados, camiones, viajes, registrosQR, vizVerd, historico, ts: new Date() };
+}
+
+function planPrincYVerdParaEscenario(datos, escActivo){
+  const esEspecial = (escActivo==="h"||escActivo==="c"||escActivo==="r"||escActivo==="s");
+  if(esEspecial){
+    const keyMap = {h:"HUEVOS",c:"CONGELADOS",r:"REFUERZO",s:"SECOS"};
+    const keyRec = keyMap[escActivo];
+    const princ = datos.cargaPlanificada.filter(r=>String(r.escenario||"").toUpperCase().indexOf(keyRec)!==-1);
+    return { princ, verd:[] };
+  }
+  const filtro = escActivo==="3" ? "3_RECORRIDOS" : "2_RECORRIDOS";
+  const princ = datos.cargaPlanificada.filter(r=>r.escenario===filtro);
+  const verd  = datos.cargaPlanificada.filter(r=>{
+    const e=(r.escenario||"").toUpperCase();
+    return e.indexOf("VERDULERIA")!==-1 || e.indexOf("VERDULERÍA")!==-1;
+  });
+  return { princ, verd };
+}
+
+function computeVizRows(datos){
+  return datos.viajes.map(v=>{
+    const plan = datos.cargaPlanificada.find(c=>normNotif(c.recorrido)===normNotif(v.recorrido));
+    const ocupKg = plan && plan.ocup_kg_teorico>0 ? Math.round(plan.ocup_kg_teorico*100) : 0;
+    let estado = "🚛 En ruta";
+    if(v.estado==="FINALIZADO") estado = "✅ Finalizado";
+    return {
+      recorrido: v.recorrido,
+      repartidor: [v.nombre_rep1, v.nombre_rep2].filter(Boolean).join(" / "),
+      camion: plan ? plan.camion_id : "",
+      planKg: plan ? plan.plan_kg : 0,
+      realKg: plan ? plan.real_kg : 0,
+      ocupPct: ocupKg,
+      bultos: plan ? plan.bultos : 0,
+      horaSalida: horaDe(v.hora_salida),
+      horaEspSal: "—",
+      horaEstLleg: "—",
+      horaLlegReal: v.estado==="FINALIZADO" ? horaDe(v.hora_llegada) : "—",
+      estado: estado,
+    };
+  });
+}
+
+function computeParadas(datos){
+  const porViajeSucursal = {};
+  datos.registrosQR.forEach(r=>{
+    if(r.sucursal==="FABRICA") return;
+    const clave = r.id_viaje+"|"+r.sucursal;
+    if(!porViajeSucursal[clave]) porViajeSucursal[clave] = {recorrido:r.recorrido, sucursal:r.sucursal, llegada:null, salida:null};
+    if(String(r.evento||"").toUpperCase()==="LLEGADA") porViajeSucursal[clave].llegada = r.ts;
+    if(String(r.evento||"").toUpperCase()==="SALIDA")  porViajeSucursal[clave].salida  = r.ts;
+  });
+  return Object.values(porViajeSucursal).map(p=>{
+    const est = datos.tiemposEstimados.find(t=>normNotif(t.recorrido)===normNotif(p.recorrido) && normNotif(t.sucursal)===normNotif(p.sucursal));
+    const tEstSeg = est ? est.tiempo_est_seg : 0;
+    let tRealSeg = 0;
+    if(p.llegada && p.salida) tRealSeg = Math.round((new Date(p.salida) - new Date(p.llegada))/1000);
+    const diff = (tEstSeg>0 && tRealSeg>0) ? Math.round((tRealSeg-tEstSeg)/60) : null;
+    return {
+      recorrido: p.recorrido, sucursal: p.sucursal,
+      bultos: est ? est.bultos_ref : 0,
+      tEstSeg: tEstSeg, tRealSeg: tRealSeg, diff: diff,
+      tEst: segsToMmSs(tEstSeg), tReal: tRealSeg>0?segsToMmSs(tRealSeg):"—",
+      estado: p.llegada && !p.salida ? "Descargando" : (!p.llegada ? "Sin escanear" : "Listo"),
+    };
+  });
+}
+
+function setProgress(pct, txt){ $("prog-bar").style.width=pct+"%"; $("load-text").textContent=txt; }
+
+function setEsc(v){
+  ESC = v;
+  ["3","2","h","c","r","s"].forEach(function(x){
+    const btn=$("seg-"+x);
+    if(btn) btn.classList.toggle("active", v===x);
+  });
+  if(DATOS) render();
+}
+
+async function cargar(){
+  $("loading").style.display="flex";
+  $("contenido").style.display="none";
+  setProgress(15,"Conectando con Supabase...");
+  $("btn-refresh").textContent="Cargando...";
+  try{
+    DATOS = await cargarDatos();
+    setProgress(85,"Procesando...");
+    setTimeout(render, 150);
+  }catch(e){
+    $("load-text").textContent = "❌ Error: "+(e.message||e);
+  }finally{
+    $("btn-refresh").textContent="↻ Actualizar";
+  }
+}
+
+function render(){
+  if(!DATOS) return;
+  $("loading").style.display="none";
+  $("contenido").style.display="block";
+  $("ts").textContent = DATOS.ts.toLocaleTimeString("es-AR");
+  const d = new Date();
+  $("kpi-date").textContent = d.toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"});
+
+  const pv = planPrincYVerdParaEscenario(DATOS, ESC);
+  const princ = pv.princ, verd = pv.verd;
+  const vizRows = computeVizRows(DATOS);
+  const paradas = computeParadas(DATOS);
+
+  renderSeguro("kpi-row",         function(){ return renderKPIsHtml(princ, verd, vizRows); }, "Resumen del día");
+  renderSeguro("box-operativo",   function(){ return renderOperativoHtml(vizRows); }, "Estado operativo");
+  renderSeguro("carga-section",   function(){ return renderCargaHtml(princ, verd); }, "Carga planificada");
+  renderSeguro("flota-grid",      function(){ return renderFlotaHtml(DATOS.camiones); }, "Flota");
+  renderSeguro("paradas-section", function(){ return renderParadasHtml(paradas); }, "Paradas");
+  if(DATOS.vizVerd && DATOS.vizVerd.length>0){
+    $("sec-verd").style.display="block";
+    renderSeguro("verd-section", function(){ return renderVizVerdHtml(DATOS.vizVerd); }, "Verdulería");
+  }
+}
+
+function mkKpi(color,icon,val,lbl,sub){
+  return '<div class="kpi"><div class="kpi-accent" style="background:'+color+'"></div>'+
+    '<span class="kpi-icon">'+icon+'</span><div class="kpi-val">'+val+'</div>'+
+    '<div class="kpi-lbl">'+lbl+'</div><div class="kpi-sub">'+sub+'</div></div>';
+}
+function renderKPIsHtml(princ, verd, vizRows){
+  const planTotal = sum(princ,"plan_kg") + sum(verd,"plan_kg");
+  const bultosTotal = sum(princ,"bultos") + sum(verd,"bultos");
+  const pallets = sum(princ,"pallets");
+  const enRuta = vizRows.filter(function(r){ return r.estado.indexOf("En ruta")!==-1; }).length;
+  const finalizados = vizRows.filter(function(r){ return r.estado.indexOf("Finalizado")!==-1; }).length;
+  const pendientes = Math.max(0, (princ.length+(verd.length>0?1:0)) - vizRows.length);
+  return mkKpi("var(--accent)","📦",fmt(planTotal)+" kg","Carga planificada",fmt(pallets,1)+" pallets")
+    + mkKpi("var(--blue2)","📬",fmt(bultosTotal),"Total bultos",princ.length+(verd.length?1:0)+" recorridos")
+    + mkKpi("var(--blue2)","🚛",enRuta,"En ruta",vizRows.length+" salidas registradas")
+    + mkKpi("var(--green)","✅",finalizados,"Finalizados","Recorridos completos")
+    + mkKpi("var(--gray2)","⏳",pendientes,"Pendientes","Sin registrar salida");
+}
+
+function horaCell(hora,label){
+  const h = hora && hora!=="—" ? hora : "—";
+  return '<div class="hora-cell"><span class="hora-label">'+label+'</span><span class="hora-main'+(h==="—"?" dim":"")+'">'+h+'</span></div>';
+}
+function barraOcc(pct,color){
+  const p=Math.min(Number(pct)||0,100);
+  return '<div class="prog-wrap"><div class="prog-bg"><div class="prog-fill" style="width:'+p+'%;background:'+color+'"></div></div><span class="prog-pct" style="color:'+color+'">'+Math.round(p)+'%</span></div>';
+}
+function estadoBadge(e){
+  const t=String(e||"Pendiente"); let cls="b-gray";
+  if(esTipo(t,"ruta")) cls="b-blue";
+  else if(esTipo(t,"demora")) cls="b-red";
+  else if(esTipo(t,"final")) cls="b-green";
+  return '<span class="badge '+cls+'">'+esc(t)+'</span>';
+}
+function renderOperativoHtml(vizRows){
+  $("viz-notice").textContent = vizRows.length ? vizRows.length+" registro"+(vizRows.length!==1?"s":"") : "Sin registros aún";
+  if(!vizRows.length){
+    return '<div class="empty-state"><div class="empty-state-icon">🕐</div><div class="empty-state-text">Ningún camión ha registrado salida todavía hoy.</div></div>';
+  }
+  let html = '<div class="tbl-wrap"><table><thead><tr>'+
+    '<th>Recorrido</th><th>Repartidor · Camión</th><th>Hora Salida</th>'+
+    '<th>Llegada Real</th><th>Carga real</th><th>% Ocupación</th><th>Estado</th>'+
+    '</tr></thead><tbody>';
+  vizRows.forEach(function(r){
+    const ocp = Number(r.ocupPct)||0;
+    const occColor = ocp>=85?"var(--green)":ocp>=60?"var(--blue2)":ocp>=30?"var(--yellow)":"var(--gray2)";
+    html += '<tr>'+
+      '<td><div class="rec-name">'+esc(r.recorrido)+'</div></td>'+
+      '<td><div style="font-weight:700;color:var(--white);font-size:1.05rem">'+esc(r.repartidor||"—")+'</div>'+(r.camion?'<span class="chip">'+esc(r.camion)+'</span>':'')+'</td>'+
+      '<td>'+horaCell(r.horaSalida,"Real")+'</td>'+
+      '<td>'+horaCell(r.horaLlegReal,"Real")+'</td>'+
+      '<td>'+(r.realKg>0?'<b style="color:var(--white);font-size:1.05rem">'+fmt(r.realKg)+'</b> kg':'<span style="color:var(--gray2)">—</span>')+'</td>'+
+      '<td>'+barraOcc(ocp,occColor)+'</td>'+
+      '<td>'+estadoBadge(r.estado)+'</td></tr>';
+  });
+  return html+"</tbody></table></div>";
+}
+
+function statRow(l,v){ return '<div class="carga-stat-row"><span class="carga-stat-label">'+l+'</span><span class="carga-stat-val">'+v+'</span></div>'; }
+function occRow(l,p,c){ const pv=Math.min(p,100); return '<div class="occ-row"><div class="occ-header"><span class="occ-label">'+l+'</span><span class="occ-val" style="color:'+c+'">'+p+'%</span></div><div class="occ-bar"><div class="occ-fill" style="width:'+pv+'%;background:'+c+'"></div></div></div>'; }
+function renderCargaHtml(princ, verd){
+  if(!princ.length && !verd.length){
+    return '<div class="sbox"><div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">Todavía no hay carga planificada sincronizada para hoy.<br>Corré la sincronización desde Apps Script.</div></div></div>';
+  }
+  let html = '<div class="carga-grid">';
+  princ.forEach(function(r){
+    const ocpKg = r.ocup_kg_teorico>0 ? Math.round(r.ocup_kg_teorico*100) : 0;
+    const ocpVol = r.ocup_vol_teorico>0 ? Math.round(r.ocup_vol_teorico*100) : 0;
+    const colKg = ocpKg>=80?"var(--orange)":ocpKg>=60?"var(--blue2)":ocpKg>=40?"var(--accent)":"var(--gray2)";
+    const colVol = ocpVol>=80?"var(--orange)":ocpVol>=60?"var(--blue2)":ocpVol>=40?"var(--accent)":"var(--gray2)";
+    const esHuevos = String(r.recorrido||"").toUpperCase().indexOf("HUEVOS")!==-1;
+    if(esHuevos){
+      html += '<div class="carga-card"><div class="carga-card-header"><div>'+
+        '<div class="carga-card-title">🥚 '+esc(r.recorrido)+'</div>'+
+        '<div class="carga-card-tag">'+esc((r.escenario||"").replace(/_/g," "))+'</div></div>'+
+        (r.camion_id?'<span class="chip">'+esc(r.camion_id)+'</span>':'')+'</div>'+
+        statRow("N° Cajones",fmt(r.cajones))+statRow("N° Cajas Docena",fmt(r.docenas))+statRow("N° Bultos ½ Doc.",fmt(r.media_docena))+
+        '<div class="occ-section">'+occRow("Ocup. volumen",ocpVol,colVol)+'</div></div>';
+    } else {
+      html += '<div class="carga-card"><div class="carga-card-header"><div>'+
+        '<div class="carga-card-title">🗺️ '+esc(r.recorrido)+'</div>'+
+        '<div class="carga-card-tag">'+esc((r.escenario||"").replace(/_/g," "))+'</div></div>'+
+        (r.camion_id?'<span class="chip">'+esc(r.camion_id)+'</span>':'')+'</div>'+
+        statRow("Carga planif.",fmt(r.plan_kg)+" kg")+statRow("Bultos",fmt(r.bultos))+statRow("Pallets",fmt(r.pallets,1))+
+        (r.kg_max>0?statRow("Cap. máx. camión",fmt(r.kg_max)+" kg"):"")+
+        '<div class="occ-section">'+occRow("Ocup. peso (Kg)",ocpKg,colKg)+occRow("Ocup. volumen",ocpVol,colVol)+'</div></div>';
+    }
+  });
+  if(verd.length>0){
+    const vTotal=sum(verd,"plan_kg"), vBultos=sum(verd,"bultos");
+    const vOcpKg = verd[0]&&verd[0].ocup_kg_teorico>0?Math.round(verd[0].ocup_kg_teorico*100):0;
+    const vOcpVol = verd[0]&&verd[0].ocup_vol_teorico>0?Math.round(verd[0].ocup_vol_teorico*100):0;
+    const vCam = verd[0]?verd[0].camion_id:"";
+    html += '<div class="verd-card"><div class="verd-header"><span class="verd-icon">🥦</span>'+
+      '<div style="flex:1"><div class="verd-title">Verdulería</div><div class="verd-sub">Recorrido especial · '+verd.length+' sucursales</div></div>'+
+      (vCam?'<span class="chip">'+esc(vCam)+'</span>':'')+'</div>'+
+      statRow("Carga total",fmt(vTotal)+" kg")+statRow("Bultos",fmt(vBultos))+
+      ((vOcpKg>0||vOcpVol>0)?'<div class="occ-section">'+(vOcpKg>0?occRow("Ocup. peso (Kg)",vOcpKg,"var(--green)"):"")+(vOcpVol>0?occRow("Ocup. volumen",vOcpVol,"var(--green)"):"")+'</div>':"")+
+      '</div>';
+  }
+  return html+"</div>";
+}
+
+function renderFlotaHtml(camiones){
+  if(!camiones.length) return '<div style="padding:20px;color:var(--gray2)">Sin datos de flota sincronizados todavía.</div>';
+  return camiones.map(function(f){
+    return '<div class="flota-item"><div class="flota-top">'+
+      '<span class="flota-id">🚚 '+esc(f.id)+'</span>'+
+      '<span class="flota-status '+(f.disponible?"f-avail":"f-unavail")+'">'+(f.disponible?"✓ Disponible":"✗ No disp.")+'</span>'+
+      '</div><div class="flota-kg">Kg máx: <span>'+fmt(f.kg_max)+' kg</span></div></div>';
+  }).join("");
+}
+
+function mkParadasKpi(color,val,lbl,sub){
+  return '<div class="paradas-kpi"><div class="paradas-kpi-accent" style="background:'+color+'"></div>'+
+    '<div class="paradas-kpi-val" style="color:'+color+'">'+val+'</div>'+
+    '<div class="paradas-kpi-lbl">'+lbl+'</div><div class="paradas-kpi-sub">'+sub+'</div></div>';
+}
+function renderParadasHtml(paradas){
+  if(!paradas.length){
+    $("paradas-resumen").textContent = "Sin registros aún";
+    return '<div class="empty-state"><div class="empty-state-icon">⏱️</div><div class="empty-state-text">Los tiempos de descarga aparecen a medida que los camiones escanean los QR de llegada/salida.</div></div>';
+  }
+  const conDatos = paradas.filter(function(p){ return p.tRealSeg>0; });
+  const tardes = conDatos.filter(function(p){ return p.diff!==null && p.diff>7; });
+  const aTiempo = conDatos.filter(function(p){ return p.diff!==null && p.diff>=-5 && p.diff<=7; });
+  const adelant = conDatos.filter(function(p){ return p.diff!==null && p.diff<-5; });
+  const sinDato = paradas.filter(function(p){ return p.tRealSeg<=0; }).length;
+  const diffsV = conDatos.filter(function(p){ return p.diff!==null; });
+  const promDesvio = diffsV.length ? Math.round(diffsV.reduce(function(a,p){ return a+p.diff; },0)/diffsV.length) : null;
+  let peor=null; tardes.forEach(function(p){ if(!peor||p.diff>peor.diff) peor=p; });
+
+  $("paradas-resumen").textContent = conDatos.length+" con datos · "+tardes.length+" tarde · "+aTiempo.length+" a tiempo · "+adelant.length+" adelantadas";
+  const promColor = promDesvio===null?"var(--gray2)":promDesvio>7?"var(--red)":promDesvio<-5?"var(--green)":"var(--blue2)";
+  const promTxt = promDesvio===null?"—":(promDesvio>0?"+":"")+promDesvio+" min";
+
+  let html = '<div class="paradas-kpi-grid">'+
+    mkParadasKpi("var(--blue2)",conDatos.length+"/"+paradas.length,"Registradas",sinDato>0?sinDato+" pendientes":"Todas escaneadas")+
+    mkParadasKpi(tardes.length>0?"var(--red)":"var(--green)",tardes.length,"Con demora",tardes.length>0?"Superaron el tiempo est.":"Ninguna con demora")+
+    mkParadasKpi("var(--green)",adelant.length,"Adelantadas","")+
+    mkParadasKpi("var(--blue2)",aTiempo.length,"A tiempo","Dentro del margen ±7 min")+
+    mkParadasKpi(promColor,promTxt,"Desvío promedio","vs. tiempo estimado")+
+    (peor?mkParadasKpi("var(--red)",peor.diff+" min","Peor parada",esc(peor.sucursal)):"")+
+  '</div>';
+
+  const grupos={}, orden=[];
+  paradas.forEach(function(p){ if(!grupos[p.recorrido]){grupos[p.recorrido]=[];orden.push(p.recorrido);} grupos[p.recorrido].push(p); });
+
+  html += '<div class="paradas-grid">';
+  orden.forEach(function(recNombre){
+    const lista = grupos[recNombre];
+    const rU = recNombre.toUpperCase();
+    const icono = rU.indexOf("VERD")!==-1?"🥦":rU.indexOf("SUR")!==-1?"🔵":rU.indexOf("NORTE")!==-1?"🟢":rU.indexOf("CENT")!==-1?"🟡":"📍";
+    const conR = lista.filter(function(p){ return p.tRealSeg>0; }).length;
+    const totalEst = lista.reduce(function(a,p){ return a+(p.tEstSeg||0); },0);
+    const totalReal = lista.reduce(function(a,p){ return a+(p.tRealSeg||0); },0);
+    const diffRec = (totalEst>0&&totalReal>0)?Math.round((totalReal-totalEst)/60):null;
+
+    html += '<div class="parada-card">'+
+      '<div class="parada-card-header">'+
+        '<div class="parada-card-title">'+icono+' '+esc(recNombre)+'</div>'+
+        '<div class="parada-card-stats">'+
+          '<div class="parada-card-stat"><div class="parada-card-stat-val">'+conR+'/'+lista.length+'</div><div class="parada-card-stat-lbl">Registradas</div></div>'+
+          (diffRec!==null?'<div class="parada-card-stat"><div class="parada-card-stat-val" style="color:'+(diffRec>7?"var(--red)":diffRec<-5?"var(--green)":"var(--blue2)")+'">'+(diffRec>0?"+":"")+diffRec+' min</div><div class="parada-card-stat-lbl">Total desvío</div></div>':'')+
+        '</div>'+
+      '</div>'+
+      '<div class="parada-col-header"><span>Sucursal</span><span style="text-align:center">Est.</span><span style="text-align:center">Real</span><span>Estado</span></div>'+
+      '<div class="parada-list">';
+    lista.forEach(function(p){
+      let pill="";
+      if(p.tRealSeg>0 && p.tEstSeg>0){
+        if(p.diff>7) pill='<span class="parada-pill pp-tarde">⚠ +'+p.diff+' min</span>';
+        else if(p.diff<-5) pill='<span class="parada-pill pp-adelantado">▲ '+Math.abs(p.diff)+' min antes</span>';
+        else pill='<span class="parada-pill pp-atime">✓ A tiempo</span>';
+      } else if(p.tRealSeg>0){
+        pill='<span class="parada-pill pp-atime">✓ Registrado</span>';
+      } else {
+        pill='<span class="parada-pill pp-sin">'+esc(p.estado||"Sin escanear")+'</span>';
+      }
+      html += '<div class="parada-row">'+
+        '<span class="parada-suc">'+esc(p.sucursal)+'</span>'+
+        '<span class="parada-t">'+esc(p.tEst)+'</span>'+
+        '<span class="parada-t parada-t-real">'+(p.tRealSeg>0?esc(p.tReal):"—")+'</span>'+
+        '<div>'+pill+'</div></div>';
+    });
+    html += '</div></div>';
+  });
+  return html+"</div>";
+}
+
+function renderVizVerdHtml(fases){
+  const activa = fases.filter(function(f){ return f.estado && f.estado.indexOf("✅")===-1 && f.estado!=="⏳ Pendiente"; });
+  $("verd-resumen").textContent = activa.length>0 ? "Ahora: "+activa[0].fase : "Todas completadas";
+  const iconos={Mercado:"🏪",Armado:"⚙️",Reparto:"🚚"};
+  const colores={Mercado:"var(--accent)",Armado:"var(--blue2)",Reparto:"var(--green)"};
+  let html = '<div class="verd-fases-grid">';
+  fases.forEach(function(f){
+    const ico=iconos[f.fase]||"📋", color=colores[f.fase]||"var(--gray2)";
+    const cls = (f.estado||"").indexOf("✅")!==-1?"vf-ok":(f.estado==="⏳ Pendiente"||!f.estado)?"vf-pendiente":"vf-activo";
+    html += '<div class="verd-fase-card"><div class="verd-fase-accent" style="background:'+color+'"></div>'+
+      '<span class="verd-fase-icon">'+ico+'</span><div class="verd-fase-nombre">'+esc(f.fase)+'</div>'+
+      '<div class="verd-fase-row"><span class="verd-fase-lbl">Inicio</span><span class="verd-fase-val">'+horaDe(f.hora_inicio)+'</span></div>'+
+      '<div class="verd-fase-row"><span class="verd-fase-lbl">Fin</span><span class="verd-fase-val">'+horaDe(f.hora_fin)+'</span></div>'+
+      '<span class="verd-fase-estado '+cls+'">'+esc(f.estado||"⏳ Pendiente")+'</span></div>';
+  });
+  return html+"</div>";
+}
+
+function toggleSeccion(nombre){
+  const id = nombre==="verd" ? "sec-verd" : "sec-historico";
+  const btnId = nombre==="verd" ? "btn-verd" : "btn-hist";
+  const sec = $(id);
+  const visible = sec.style.display!=="none";
+  sec.style.display = visible ? "none" : "block";
+  $(btnId).textContent = visible ? (nombre==="verd"?"🥦 Verdulería":"📊 Histórico") : (nombre==="verd"?"▲ Ocultar Verd.":"▲ Ocultar Hist.");
+  if(!visible){
+    if(nombre==="historico") renderSeguro("hist-section", function(){ return renderHistoricoHtml(DATOS.historico); }, "Histórico");
+    sec.scrollIntoView({behavior:"smooth"});
+  }
+}
+function renderHistoricoHtml(rows){
+  if(!rows.length){
+    $("hist-resumen").textContent="Sin datos";
+    return '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">No hay histórico guardado todavía.</div></div>';
+  }
+  const recorridos=[], fechas=[];
+  rows.forEach(function(r){
+    if(r.recorrido && recorridos.indexOf(r.recorrido)===-1) recorridos.push(r.recorrido);
+    if(r.fecha && fechas.indexOf(r.fecha)===-1) fechas.push(r.fecha);
+  });
+  $("hist-resumen").textContent = rows.length+" registros · "+fechas.length+" días";
+  window._HIST_ROWS = rows;
+  return '<div class="hist-filter-bar"><span class="hist-filter-label">Filtrar:</span>'+
+      '<select class="hist-filter-select" id="hf-rec" onchange="filtrarHist()"><option value="">Todos los recorridos</option>'+recorridos.map(function(r){return '<option>'+esc(r)+'</option>';}).join("")+'</select>'+
+      '<select class="hist-filter-select" id="hf-fec" onchange="filtrarHist()"><option value="">Todas las fechas</option>'+fechas.map(function(f){return '<option>'+esc(f)+'</option>';}).join("")+'</select>'+
+    '</div>'+
+    '<div class="sbox"><div class="tbl-wrap"><table><thead><tr>'+
+      '<th>Fecha</th><th>ID Viaje</th><th>Recorrido</th><th>Repartidor</th><th>Camión</th>'+
+      '<th>Plan Kg</th><th>Real Kg</th><th>Bultos</th><th>Salida</th><th>Llegada Real</th>'+
+    '</tr></thead><tbody id="hist-tbody">'+buildHistRows(rows)+'</tbody></table></div></div>';
+}
+function buildHistRows(rows){
+  return rows.map(function(r){
+    return '<tr>'+
+      '<td>'+esc(r.fecha)+'</td>'+
+      '<td><span class="chip" style="background:#1e293b">'+esc(r.id_viaje||"—")+'</span></td>'+
+      '<td><b style="color:var(--white)">'+esc(r.recorrido||"")+'</b></td>'+
+      '<td>'+esc(r.nombre_repartidor||"—")+'</td>'+
+      '<td><span class="chip">'+esc(r.camion_id||"—")+'</span></td>'+
+      '<td>'+fmt(r.plan_kg)+' kg</td><td><b>'+fmt(r.real_kg)+' kg</b></td><td>'+fmt(r.bultos)+'</td>'+
+      '<td>'+esc(r.hora_salida||"—")+'</td><td><b>'+esc(r.hora_llegada_real||"—")+'</b></td>'+
+    '</tr>';
+  }).join("");
+}
+function filtrarHist(){
+  const rec=$("hf-rec").value, fec=$("hf-fec").value;
+  $("hist-tbody").innerHTML = buildHistRows((window._HIST_ROWS||[]).filter(function(r){ return (!rec||r.recorrido===rec)&&(!fec||r.fecha===fec); }));
+}
+
+window.onload = cargar;
+</script>
+</body>
+</html>

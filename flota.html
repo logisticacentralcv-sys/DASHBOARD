@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flota — Campo Verde</title>
+<style>
+:root {
+  --bg:#0b1624; --surface:#0f1f35; --card:#132340; --card2:#162848;
+  --border:#1e3a5c; --border2:#243f65;
+  --accent:#e8a020; --blue:#2563eb; --blue2:#3b82f6;
+  --green:#22c55e; --gray2:#64748b; --light:#94a3b8; --white:#f1f5f9;
+  --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--light);min-height:100vh;font-size:15px}
+.topbar{
+  background:linear-gradient(90deg,#0a1828 0%,#0f2240 100%);
+  border-bottom:2px solid var(--accent);
+  padding:16px 28px;display:flex;align-items:center;gap:18px;
+}
+.brand-icon{font-size:1.6rem}
+.brand-name{font-size:1.25rem;font-weight:800;color:var(--white);letter-spacing:.02em}
+.brand-name span{color:var(--accent)}
+main{padding:40px 28px;max-width:1100px;margin:0 auto}
+.hub-title{font-size:1.4rem;font-weight:800;color:var(--white);margin-bottom:6px}
+.hub-sub{font-size:.9rem;color:var(--gray2);margin-bottom:32px}
+.mod-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.mod-card{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:26px 24px;text-decoration:none;color:inherit;display:block;
+  transition:.18s;position:relative;overflow:hidden;
+}
+.mod-card:not(.disabled):hover{border-color:var(--accent);transform:translateY(-2px)}
+.mod-card.disabled{opacity:.45;cursor:not-allowed}
+.mod-icon{font-size:2.2rem;margin-bottom:14px;display:block}
+.mod-name{font-size:1.15rem;font-weight:700;color:var(--white);margin-bottom:6px}
+.mod-desc{font-size:.85rem;color:var(--light);line-height:1.5}
+.mod-badge{
+  position:absolute;top:16px;right:16px;font-size:.68rem;font-weight:700;
+  padding:4px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em;
+}
+.mod-badge.live{background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.25)}
+.mod-badge.soon{background:rgba(100,116,139,.12);color:#94a3b8;border:1px solid rgba(100,116,139,.2)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="brand-icon">🚚</span>
+  <span class="brand-name"><span>Campo Verde</span> · Flota</span>
+</div>
+<main>
+  <div class="hub-title">Módulos de Flota</div>
+  <div class="hub-sub">Cada módulo es independiente — si uno se cae por mantenimiento, los demás siguen funcionando.</div>
+  <div class="mod-grid">
+    <a class="mod-card" href="flota-operativo.html">
+      <span class="mod-badge live">Activo</span>
+      <span class="mod-icon">📊</span>
+      <div class="mod-name">Operativo</div>
+      <div class="mod-desc">Carga planificada, seguimiento de recorridos en tiempo real, tiempos de descarga por sucursal, Verdulería e histórico.</div>
+    </a>
+    <a class="mod-card disabled" href="#" onclick="return false">
+      <span class="mod-badge soon">Próximamente</span>
+      <span class="mod-icon">🔧</span>
+      <div class="mod-name">Mantenimiento de camiones</div>
+      <div class="mod-desc">Service, VTV, seguros y alertas de mantenimiento preventivo por vehículo.</div>
+    </a>
+    <a class="mod-card disabled" href="#" onclick="return false">
+      <span class="mod-badge soon">Próximamente</span>
+      <span class="mod-icon">🧴</span>
+      <div class="mod-name">Insumos de limpieza</div>
+      <div class="mod-desc">Pedidos de Administración/Logística hacia sucursales, con control de stock.</div>
+    </a>
+  </div>
+</main>
+</body>
+</html>
