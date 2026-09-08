@@ -322,7 +322,13 @@ function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;")
 function fmt(n,dec){ const d=dec===undefined?0:dec; return Number(n||0).toLocaleString("es-AR",{minimumFractionDigits:d,maximumFractionDigits:d}); }
 function sum(arr,key){ let t=0; for(let i=0;i<arr.length;i++) t+=Number(arr[i][key])||0; return t; }
 function esTipo(txt,kw){ return String(txt||"").toLowerCase().indexOf(kw.toLowerCase())!==-1; }
-function hoyISO(){ return new Date().toISOString().slice(0,10); }
+function hoyISO(){
+  // Fecha LOCAL (Argentina), no UTC — toISOString() sola se corre de
+  // día cerca de la medianoche por la diferencia de huso horario.
+  const d = new Date();
+  const local = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+  return local.toISOString().slice(0,10);
+}
 function normNotif(s){ return (s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
 function segsToMmSs(s){ if(!s||s<=0) return "—"; const m=Math.floor(s/60), ss=Math.floor(s%60); return (m<10?"0":"")+m+":"+(ss<10?"0":"")+ss; }
 function horaDe(iso){ return iso ? new Date(iso).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}) : "—"; }

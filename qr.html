@@ -88,6 +88,15 @@ const TRANSFER_APP_URL = "https://transferlog.vercel.app/";
 const RADIO_TOLERANCIA_METROS = 50;
 
 function normNotif(s){ return (s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
+// Fecha de "hoy" en horario LOCAL (Argentina) — toISOString() sola
+// convierte a UTC y cerca de la medianoche podía devolver la fecha
+// de mañana, haciendo que el viaje quedara guardado con la fecha
+// equivocada (y no apareciera en los dashboards que filtran por hoy).
+function hoyLocalISO(){
+  const d = new Date();
+  const local = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+  return local.toISOString().slice(0,10);
+}
 function escHtml(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function $(id){ return document.getElementById(id); }
 
@@ -171,7 +180,7 @@ async function crearViaje(args){
   const esVerd = normNotif(args.recorrido).indexOf("verduleria")!==-1;
   const nowIso = new Date().toISOString();
   const fila = {
-    id: id, fecha: nowIso.slice(0,10), recorrido: args.recorrido,
+    id: id, fecha: hoyLocalISO(), recorrido: args.recorrido,
     dni_rep1: args.dni1, nombre_rep1: args.nombre1, dni_rep2: args.dni2||null, nombre_rep2: args.nombre2||null,
     hora_salida: nowIso, estado:"ACTIVO", celular_id: celularId,
     fase_verd: esVerd ? "SALIDA_MERCADO" : "",
@@ -235,7 +244,7 @@ async function registrarFaseVerduleria(idViaje, fase, lat, lon){
 }
 async function actualizarVizVerd(idViaje, fase, horaInicio, horaFin){
   try{
-    const hoy = new Date().toISOString().slice(0,10);
+    const hoy = hoyLocalISO();
     const nombreFase = fase==="SALIDA_MERCADO"?"Mercado":fase==="LLEGADA_MERCADO"?"Armado":fase==="FIN_ARMADO"?"Reparto":null;
     if(!nombreFase) return;
     const { data } = await sb.from("flota_viz_verd").select("*").eq("fecha",hoy).eq("id_viaje",idViaje).eq("fase",nombreFase).limit(1);
