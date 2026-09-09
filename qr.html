@@ -123,9 +123,11 @@ function mostrarToast(mensaje, tipo, link){
 }
 async function chequearAvisosTransferencia(sucursalNombre){
   try{
-    const listaParaRetirar = await sb.from("solicitudes").select("id",{count:"exact",head:true}).eq("sucursal",sucursalNombre).eq("estado","Lista para retirar");
-    const aprobadaSinArmar = await sb.from("solicitudes").select("id",{count:"exact",head:true}).eq("sucursal",sucursalNombre).eq("estado","Aprobada");
-    const paraDejar = await sb.from("solicitudes").select("id",{count:"exact",head:true}).eq("destino",sucursalNombre).eq("estado","En tránsito");
+    const [listaParaRetirar, aprobadaSinArmar, paraDejar] = await Promise.all([
+      sb.from("solicitudes").select("id",{count:"exact",head:true}).eq("sucursal",sucursalNombre).eq("estado","Lista para retirar"),
+      sb.from("solicitudes").select("id",{count:"exact",head:true}).eq("sucursal",sucursalNombre).eq("estado","Aprobada"),
+      sb.from("solicitudes").select("id",{count:"exact",head:true}).eq("destino",sucursalNombre).eq("estado","En tránsito"),
+    ]);
     if(listaParaRetirar.count) mostrarToast("Tenés "+listaParaRetirar.count+" transferencia(s) lista(s) para retirar acá", "retirar", TRANSFER_APP_URL);
     if(aprobadaSinArmar.count) mostrarToast("Hay transferencia(s) aprobadas acá — pedí a la sucursal que las arme", "aprobada", TRANSFER_APP_URL);
     if(paraDejar.count) mostrarToast("Tenés "+paraDejar.count+" transferencia(s) para dejar acá", "dejar", TRANSFER_APP_URL);
@@ -133,8 +135,10 @@ async function chequearAvisosTransferencia(sucursalNombre){
 }
 
 async function cargarInicial(){
-  const sucs = await sb.from("sucursales").select("nombre,lat,lon");
-  const recs = await sb.from("recorridos").select("nombre");
+  const [sucs, recs] = await Promise.all([
+    sb.from("sucursales").select("nombre,lat,lon"),
+    sb.from("recorridos").select("nombre"),
+  ]);
   CACHE_SUCURSALES = sucs.data || [];
   CACHE_RECORRIDOS = (recs.data||[]).map(function(r){return r.nombre;}).filter(Boolean);
 
@@ -190,20 +194,6 @@ async function crearViaje(args){
   const gps = validarDistanciaLocal("FABRICA", args.lat, args.lon);
   await sb.from("flota_registros_qr").insert({ts:nowIso, id_viaje:id, sucursal:"FABRICA", evento:"SALIDA FABRICA", gps_obs:textoGps(gps), recorrido:args.recorrido});
   return id;
-}
-async function obtenerProximoEvento(idViaje, sucursal){
-  const { data } = await sb.from("flota_registros_qr").select("evento").eq("id_viaje", idViaje).eq("sucursal", sucursal).order("ts",{ascending:false}).limit(1);
-  const ultimo = data && data[0] ? String(data[0].evento||"").toUpperCase() : "";
-  return ultimo==="LLEGADA" ? "SALIDA" : "LLEGADA";
-}
-async function registrarEvento(args){
-  const viaje = await obtenerViaje(args.idViaje);
-  if(!viaje) throw new Error("El viaje no existe.");
-  if(viaje.estado!=="ACTIVO") throw new Error("El viaje ya fue finalizado.");
-  const proximo = await obtenerProximoEvento(args.idViaje, args.sucursal);
-  if(args.evento!==proximo) throw new Error("Corresponde registrar: "+proximo);
-  const gps = validarDistanciaLocal(args.sucursal, args.lat, args.lon);
-  await sb.from("flota_registros_qr").insert({ts:new Date().toISOString(), id_viaje:args.idViaje, sucursal:args.sucursal, evento:args.evento, gps_obs:textoGps(gps), recorrido:viaje.recorrido});
 }
 async function finalizarViaje(idViaje, lat, lon){
   const viaje = await obtenerViaje(idViaje);
@@ -286,12 +276,12 @@ function obtenerUbicacion(){
     if(!navigator.geolocation){ resolve({lat:null,lon:null}); return; }
     let resuelto=false;
     const fin = function(r){ if(!resuelto){ resuelto=true; resolve(r); } };
-    setTimeout(function(){fin({lat:null,lon:null});}, 12000);
+    setTimeout(function(){fin({lat:null,lon:null});}, 6000);
     try{
       navigator.geolocation.getCurrentPosition(
         function(pos){fin({lat:pos.coords.latitude, lon:pos.coords.longitude});},
         function(){fin({lat:null,lon:null});},
-        {enableHighAccuracy:true, timeout:10000, maximumAge:0}
+        {enableHighAccuracy:true, timeout:5000, maximumAge:20000}
       );
     }catch(e){ fin({lat:null,lon:null}); }
   });
@@ -522,39 +512,35 @@ function renderSucursalSinViaje(){
   $("contenido").innerHTML = html;
 }
 
-async function renderSucursalConViaje(v){
-  $("contenido").innerHTML = '<div class="card"><div class="card-title">📍 Registrar evento</div>'+
+async function registrarLlegada(idViaje, sucursal, lat, lon){
+  const viaje = await obtenerViaje(idViaje);
+  if(!viaje) throw new Error("El viaje no existe.");
+  if(viaje.estado!=="ACTIVO") throw new Error("El viaje ya fue finalizado.");
+  const { data: yaExiste } = await sb.from("flota_registros_qr").select("id").eq("id_viaje", idViaje).eq("sucursal", sucursal).eq("evento","LLEGADA").limit(1);
+  if(yaExiste && yaExiste.length) throw new Error("Ya registraste la llegada acá para este viaje.");
+  const gps = validarDistanciaLocal(sucursal, lat, lon);
+  await sb.from("flota_registros_qr").insert({ts:new Date().toISOString(), id_viaje:idViaje, sucursal:sucursal, evento:"LLEGADA", gps_obs:textoGps(gps), recorrido:viaje.recorrido});
+}
+
+function renderSucursalConViaje(v){
+  $("contenido").innerHTML = '<div class="card"><div class="card-title">📍 Registrar llegada</div>'+
     '<div class="viaje-info">'+
     '<div class="viaje-info-row"><span class="vi-label">Viaje</span><span class="viaje-id">'+escHtml(v.id)+'</span></div>'+
     '<div class="viaje-info-row"><span class="vi-label">Recorrido</span><span class="vi-val">'+escHtml(v.recorrido)+'</span></div>'+
-    '</div><div id="contenedorEvento">Cargando...</div>'+
-    '<button class="btn btn-primary" onclick="accionRegistrarEvento()" id="btn-reg">Registrar</button></div>';
-
-  const proximo = await obtenerProximoEvento(v.id, SUCURSAL_OFICIAL);
-  const htmlEv = proximo==="LLEGADA"
-    ? '<div class="field"><label>Tipo de registro</label><div class="radio-group">'+
-        '<label class="radio-opt"><input type="radio" name="evento" value="LLEGADA" checked>'+
-        '<div class="radio-label llegada"><span class="radio-icon">🟢</span><span class="radio-text">Llegada</span></div></label></div></div>'
-    : '<div class="field"><label>Tipo de registro</label><div class="radio-group">'+
-        '<label class="radio-opt"><input type="radio" name="evento" value="SALIDA" checked>'+
-        '<div class="radio-label salida"><span class="radio-icon">🟡</span><span class="radio-text">Salida</span></div></label></div></div>';
-  const cont = $("contenedorEvento");
-  if(cont) cont.innerHTML = htmlEv;
+    '</div>'+
+    '<button class="btn btn-green" onclick="accionRegistrarEvento()" id="btn-reg">🟢 Confirmar llegada</button></div>';
 }
 
 async function accionRegistrarEvento(){
-  const sel = document.querySelector('input[name="evento"]:checked');
-  if(!sel){ alert("No se pudo determinar el evento."); return; }
-  const tipo = sel.value;
   const btn = $("btn-reg");
   if(btn){ btn.disabled=true; btn.textContent="Verificando ubicación..."; }
   const ubic = await chequearUbicacion(SUCURSAL_OFICIAL);
-  if(!ubic.continuar){ if(btn){btn.disabled=false;btn.textContent="Registrar";} return; }
+  if(!ubic.continuar){ if(btn){btn.disabled=false;btn.textContent="🟢 Confirmar llegada";} return; }
   if(btn) btn.textContent="Registrando...";
   try{
-    await registrarEvento({idViaje:viajeActivo, sucursal:SUCURSAL_OFICIAL, evento:tipo, lat:ubic.lat, lon:ubic.lon});
-    showExito(tipo==="LLEGADA"?"¡Llegada registrada!":"¡Salida registrada!", SUCURSAL_OFICIAL, tipo==="LLEGADA"?"Llegada confirmada ✓":"Salida confirmada ✓");
-  }catch(e){ if(btn){btn.disabled=false;btn.textContent="Registrar";} showError(e); }
+    await registrarLlegada(viajeActivo, SUCURSAL_OFICIAL, ubic.lat, ubic.lon);
+    showExito("¡Llegada registrada!", SUCURSAL_OFICIAL, "Llegada confirmada ✓");
+  }catch(e){ if(btn){btn.disabled=false;btn.textContent="🟢 Confirmar llegada";} showError(e); }
 }
 
 cargarInicial();
