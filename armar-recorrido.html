@@ -101,6 +101,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   <div>
     <h1>Armar / editar un recorrido</h1>
     <div class="sub">Elegí las paradas en el orden que las va a hacer el camión — el tiempo entre cada una se calcula solo con la matriz ya cargada.</div>
+    <div class="sub" style="margin-top:4px;color:var(--accent)">💡 Usá el mismo nombre de recorrido que ya existe en TransferApp (SUR, CENTRO, NORTE, etc.) — así después se puede cruzar la información entre las dos apps. El campo de abajo ya te los sugiere.</div>
   </div>
 
   <div class="card">
@@ -163,14 +164,17 @@ function minutosEntre(origen, destino){
 }
 
 async function cargarDatos(){
-  const [{data:matriz, error: e1}, {data:tviaje, error: e2}] = await Promise.all([
+  const [{data:matriz, error: e1}, {data:tviaje, error: e2}, {data:recTransfer}] = await Promise.all([
     sb.from("flota_matriz_tiempos").select("*"),
     sb.from("flota_tiempos_viaje").select("*"),
+    sb.from("recorridos").select("*"), // misma tabla que usa TransferApp — así los nombres quedan alineados
   ]);
   if(e1){ mostrarMsg("msg-recorrido", "No se pudo cargar la matriz de tiempos: "+e1.message, "err"); return; }
   MATRIZ = matriz||[];
   PUNTOS = [...new Set(MATRIZ.map(m=>m.origen))].sort();
-  RECORRIDOS_EXISTENTES = [...new Set((tviaje||[]).map(t=>t.recorrido))].sort();
+  const nombresFlota = (tviaje||[]).map(t=>t.recorrido);
+  const nombresTransferApp = (recTransfer||[]).map(r=>r.nombre).filter(Boolean);
+  RECORRIDOS_EXISTENTES = [...new Set([...nombresTransferApp, ...nombresFlota])].sort();
 
   const dl = document.getElementById("dl-recorridos");
   dl.innerHTML = RECORRIDOS_EXISTENTES.map(r=>`<option value="${escH(r)}">`).join("");
