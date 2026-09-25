@@ -142,8 +142,13 @@ async function cargarInicial(){
     sb.from("flota_tiempos_viaje").select("*"),
   ]);
   CACHE_SUCURSALES = sucs.data || [];
-  CACHE_RECORRIDOS = (recs.data||[]).map(function(r){return r.nombre;}).filter(Boolean);
   CACHE_HOJAS_RUTA = hojas.data || [];
+  // Solo se puede elegir un recorrido que YA tenga una hoja de ruta
+  // armada (en "Armar recorrido") — no cualquiera de la lista general
+  // de TransferApp, aunque exista ahí.
+  const nombresConHojaDeRuta = new Set(CACHE_HOJAS_RUTA.map(function(p){return normNotif(p.recorrido);}));
+  const nombresOficiales = (recs.data||[]).map(function(r){return r.nombre;}).filter(Boolean);
+  CACHE_RECORRIDOS = nombresOficiales.filter(function(n){return nombresConHojaDeRuta.has(normNotif(n));});
 
   if(!esFabrica()){
     const match = CACHE_SUCURSALES.find(function(s){return normNotif(s.nombre)===normNotif(SUCURSAL_PARAM);});
@@ -372,7 +377,10 @@ function renderFabricaSinViaje(){
   html += '<div class="card"><div class="card-title">🚛 Iniciar recorrido</div>'+
     '<div class="field"><label>Tu DNI (repartidor principal)</label><input type="number" id="dni1" placeholder="Ej: 30123456"/></div>'+
     '<div class="field"><label>DNI acompañante (opcional)</label><input type="number" id="dni2" placeholder="Dejar vacío si vas solo"/></div>'+
-    '<div class="field"><label>Recorrido</label><select id="rec" onchange="mostrarHojaDeRuta()">'+CACHE_RECORRIDOS.map(function(r){return '<option>'+escHtml(r)+'</option>';}).join("")+'</select></div>'+
+    '<div class="field"><label>Recorrido</label>'+(CACHE_RECORRIDOS.length
+      ? '<select id="rec" onchange="mostrarHojaDeRuta()">'+CACHE_RECORRIDOS.map(function(r){return '<option>'+escHtml(r)+'</option>';}).join("")+'</select>'
+      : '<div style="font-size:13px;color:#fbbf24">Todavía no hay ningún recorrido armado (con orden de paradas) — pedile a Logística que lo arme primero en "Armar recorrido".</div>'
+    )+'</div>'+
     '<div id="hoja-ruta"></div>'+
     '<div id="err-nuevo" class="err-msg"></div>'+
     '<button class="btn btn-green" onclick="iniciarViaje()">✅ Confirmar salida</button></div>';
@@ -422,7 +430,7 @@ async function recuperarViajePorDni(){
 async function iniciarViaje(){
   const dni1 = ($("dni1").value||"").trim();
   const dni2 = ($("dni2").value||"").trim();
-  const recorrido = $("rec").value;
+  const recorrido = $("rec") ? $("rec").value : "";
   $("err-nuevo").textContent = "";
   if(!dni1 || !recorrido){ $("err-nuevo").textContent="Ingresá tu DNI y elegí un recorrido."; return; }
 
