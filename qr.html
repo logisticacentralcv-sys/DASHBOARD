@@ -106,6 +106,7 @@ function esFabrica(){ return normNotif(SUCURSAL_PARAM)==="fabrica"; }
 
 let CACHE_SUCURSALES = [];
 let CACHE_RECORRIDOS = [];
+let CACHE_HOJAS_RUTA = [];
 let SUCURSAL_OFICIAL = SUCURSAL_PARAM;
 let viajeActivo = localStorage.getItem("viajeActivo_cv2") || null;
 let celularId = localStorage.getItem("celularId_cv2") || "";
@@ -135,12 +136,14 @@ async function chequearAvisosTransferencia(sucursalNombre){
 }
 
 async function cargarInicial(){
-  const [sucs, recs] = await Promise.all([
+  const [sucs, recs, hojas] = await Promise.all([
     sb.from("sucursales").select("nombre,lat,lon"),
     sb.from("recorridos").select("nombre"),
+    sb.from("flota_tiempos_viaje").select("*"),
   ]);
   CACHE_SUCURSALES = sucs.data || [];
   CACHE_RECORRIDOS = (recs.data||[]).map(function(r){return r.nombre;}).filter(Boolean);
+  CACHE_HOJAS_RUTA = hojas.data || [];
 
   if(!esFabrica()){
     const match = CACHE_SUCURSALES.find(function(s){return normNotif(s.nombre)===normNotif(SUCURSAL_PARAM);});
@@ -369,11 +372,33 @@ function renderFabricaSinViaje(){
   html += '<div class="card"><div class="card-title">🚛 Iniciar recorrido</div>'+
     '<div class="field"><label>Tu DNI (repartidor principal)</label><input type="number" id="dni1" placeholder="Ej: 30123456"/></div>'+
     '<div class="field"><label>DNI acompañante (opcional)</label><input type="number" id="dni2" placeholder="Dejar vacío si vas solo"/></div>'+
-    '<div class="field"><label>Recorrido</label><select id="rec">'+CACHE_RECORRIDOS.map(function(r){return '<option>'+escHtml(r)+'</option>';}).join("")+'</select></div>'+
+    '<div class="field"><label>Recorrido</label><select id="rec" onchange="mostrarHojaDeRuta()">'+CACHE_RECORRIDOS.map(function(r){return '<option>'+escHtml(r)+'</option>';}).join("")+'</select></div>'+
+    '<div id="hoja-ruta"></div>'+
     '<div id="err-nuevo" class="err-msg"></div>'+
     '<button class="btn btn-green" onclick="iniciarViaje()">✅ Confirmar salida</button></div>';
 
   $("contenido").innerHTML = html;
+  mostrarHojaDeRuta();
+}
+
+function mostrarHojaDeRuta(){
+  const sel = $("rec");
+  const cont = $("hoja-ruta");
+  if(!sel || !cont) return;
+  const recorrido = sel.value;
+  const paradas = CACHE_HOJAS_RUTA
+    .filter(function(p){ return normNotif(p.recorrido)===normNotif(recorrido); })
+    .sort(function(a,b){ return a.orden_parada-b.orden_parada; });
+  if(!paradas.length){
+    cont.innerHTML = '<div class="field" style="font-size:13px;color:#94a3b8">Este recorrido todavía no tiene un orden de paradas cargado.</div>';
+    return;
+  }
+  cont.innerHTML = '<div class="field"><label>Orden de paradas de "'+escHtml(recorrido)+'"</label>'+
+    '<div style="display:flex;flex-direction:column;gap:4px;background:#0f1f35;border:1px solid #1e3a5c;border-radius:8px;padding:10px 14px">'+
+    paradas.map(function(p,i){
+      return '<div style="font-size:14px;color:#f1f5f9"><b style="color:#e8a020">'+(i+1)+'.</b> '+escHtml(p.sucursal)+'</div>';
+    }).join("")+
+    '</div></div>';
 }
 
 async function recuperarViajePorDni(){
