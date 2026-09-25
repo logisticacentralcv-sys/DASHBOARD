@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Armar recorrido — Flota Campo Verde</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:#0b1624; --surface:#0f1f35; --card:#132340; --card2:#162848;
+  --border:#1e3a5c; --border2:#243f65;
+  --accent:#e8a020; --blue:#2563eb; --blue2:#3b82f6;
+  --green:#22c55e; --red:#ef4444; --yellow:#f59e0b; --orange:#f97316;
+  --gray:#4e6a8a; --gray2:#64748b; --light:#94a3b8; --white:#f1f5f9;
+  --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--light);min-height:100vh;font-size:15px}
+.topbar{
+  background:linear-gradient(90deg,#0a1828 0%,#0f2240 100%);
+  border-bottom:2px solid var(--accent);
+  padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand a{color:inherit;text-decoration:none;font-size:.85rem;opacity:.7}
+.brand-icon{font-size:1.6rem}
+.brand-name{font-size:1.25rem;font-weight:800;color:var(--white);letter-spacing:.02em}
+.brand-name span{color:var(--accent)}
+
+main{padding:28px;max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1{font-size:1.3rem;color:var(--white);font-weight:800}
+.sub{font-size:.88rem;color:var(--gray2);margin-top:2px}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px}
+label{font-size:.8rem;color:var(--gray2);text-transform:uppercase;letter-spacing:.08em;font-weight:600;display:block;margin-bottom:6px}
+input,select{
+  width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:8px;
+  padding:11px 13px;color:var(--white);font-family:var(--font);font-size:.95rem;
+}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+.row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.row > div{flex:1;min-width:200px}
+.btn{padding:11px 20px;border-radius:8px;border:1px solid var(--border2);
+  background:rgba(255,255,255,.04);color:var(--light);font-size:.9rem;cursor:pointer;transition:.18s;font-family:var(--font);font-weight:600}
+.btn:hover{background:rgba(232,160,32,.15);border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn-primary:hover{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+.btn-add{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.3);color:#4ade80}
+.btn-add:hover{background:rgba(34,197,94,.22);border-color:#4ade80;color:#4ade80}
+.btn-danger{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.25);color:#f87171}
+.btn-danger:hover{background:rgba(239,68,68,.2);border-color:#f87171}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+.stop-list{display:flex;flex-direction:column;gap:0;margin-top:16px}
+.stop{
+  display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--border);
+}
+.stop:last-child{border-bottom:none}
+.stop-num{
+  width:30px;height:30px;border-radius:50%;background:var(--surface);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:var(--accent);flex-shrink:0;
+}
+.stop-name{font-weight:700;color:var(--white);flex:1;min-width:120px}
+.stop-leg{font-size:.85rem;color:var(--light);white-space:nowrap}
+.stop-leg b{color:var(--accent)}
+.stop-total{font-size:.78rem;color:var(--gray2);white-space:nowrap}
+.stop-actions{display:flex;gap:4px;flex-shrink:0}
+.icon-btn{
+  width:30px;height:30px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);
+  color:var(--light);cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;
+}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+.icon-btn:disabled{opacity:.3;cursor:not-allowed}
+
+.total-bar{
+  margin-top:16px;padding:14px 18px;background:rgba(232,160,32,.08);border:1px solid rgba(232,160,32,.25);
+  border-radius:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
+}
+.total-bar b{color:var(--accent);font-size:1.1rem}
+
+.empty{text-align:center;padding:30px;color:var(--gray2);font-size:.9rem}
+.msg{font-size:.85rem;padding:10px 14px;border-radius:8px;margin-top:10px}
+.msg.ok{background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.25)}
+.msg.err{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.25)}
+.msg.warn{background:rgba(245,158,11,.1);color:#fbbf24;border:1px solid rgba(245,158,11,.25)}
+
+.pendiente-nota{font-size:.8rem;color:var(--gray2);margin-top:14px;padding-top:14px;border-top:1px dashed var(--border2)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="brand-icon">🗺️</span>
+    <span class="brand-name"><span>Campo Verde</span> · Armar recorrido</span>
+  </div>
+  <a href="index.html" style="color:var(--light);text-decoration:none;font-size:.85rem">← Volver al hub</a>
+</div>
+
+<main>
+  <div>
+    <h1>Armar / editar un recorrido</h1>
+    <div class="sub">Elegí las paradas en el orden que las va a hacer el camión — el tiempo entre cada una se calcula solo con la matriz ya cargada.</div>
+  </div>
+
+  <div class="card">
+    <label>Nombre del recorrido</label>
+    <div class="row">
+      <div>
+        <input id="inp-recorrido" list="dl-recorridos" placeholder="Ej: SUR, CENTRO, NORTE..." oninput="onCambiaRecorrido()"/>
+        <datalist id="dl-recorridos"></datalist>
+      </div>
+      <div style="flex:0">
+        <button class="btn" onclick="cargarRecorridoExistente()">Cargar existente</button>
+      </div>
+    </div>
+    <div id="msg-recorrido"></div>
+  </div>
+
+  <div class="card">
+    <label>Agregar parada</label>
+    <div class="row">
+      <div>
+        <select id="sel-parada"></select>
+      </div>
+      <div style="flex:0">
+        <button class="btn btn-add" onclick="agregarParada()">+ Agregar</button>
+      </div>
+    </div>
+
+    <div class="stop-list" id="lista-paradas">
+      <div class="empty">Todavía no agregaste ninguna parada — arranca siempre desde Fábrica.</div>
+    </div>
+
+    <div class="total-bar" id="total-bar" style="display:none">
+      <span>🕐 Tiempo total de viaje (sin contar descargas)</span>
+      <b id="total-minutos">—</b>
+    </div>
+
+    <div class="pendiente-nota">📦 El tiempo de descarga por parada (para el cálculo de ETA completo) se suma en otro paso, todavía no está integrado acá.</div>
+  </div>
+
+  <div class="card" style="display:flex;justify-content:flex-end;gap:10px">
+    <button class="btn btn-danger" onclick="borrarRecorrido()" id="btn-borrar" disabled>🗑️ Borrar este recorrido</button>
+    <button class="btn btn-primary" onclick="guardarRecorrido()" id="btn-guardar" disabled>💾 Guardar recorrido</button>
+  </div>
+</main>
+
+<script>
+const SUPABASE_URL = "https://lrwwpulunfcavmvmwotd.supabase.co";
+const SUPABASE_KEY = "sb_publishable_SrUcYrDVBIOvZgF-DSPcyg_qV0LXEDQ";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let MATRIZ = [];       // filas {origen,destino,minutos}
+let PUNTOS = [];       // nombres únicos disponibles (de la matriz)
+let RECORRIDOS_EXISTENTES = []; // nombres de recorridos ya guardados
+let paradas = [];      // nombres, en orden, SIN incluir "Fábrica" (siempre es el punto de partida implícito)
+
+function minutosEntre(origen, destino){
+  if(origen===destino) return 0;
+  const fila = MATRIZ.find(m=>m.origen===origen && m.destino===destino);
+  return fila ? Number(fila.minutos) : null;
+}
+
+async function cargarDatos(){
+  const [{data:matriz, error: e1}, {data:tviaje, error: e2}] = await Promise.all([
+    sb.from("flota_matriz_tiempos").select("*"),
+    sb.from("flota_tiempos_viaje").select("*"),
+  ]);
+  if(e1){ mostrarMsg("msg-recorrido", "No se pudo cargar la matriz de tiempos: "+e1.message, "err"); return; }
+  MATRIZ = matriz||[];
+  PUNTOS = [...new Set(MATRIZ.map(m=>m.origen))].sort();
+  RECORRIDOS_EXISTENTES = [...new Set((tviaje||[]).map(t=>t.recorrido))].sort();
+
+  const dl = document.getElementById("dl-recorridos");
+  dl.innerHTML = RECORRIDOS_EXISTENTES.map(r=>`<option value="${escH(r)}">`).join("");
+
+  const sel = document.getElementById("sel-parada");
+  const puntosSinFabrica = PUNTOS.filter(p=>p.toUpperCase()!=="FABRICA");
+  sel.innerHTML = puntosSinFabrica.map(p=>`<option value="${escH(p)}">${escH(p)}</option>`).join("");
+
+  if(!MATRIZ.length){
+    mostrarMsg("msg-recorrido", "Todavía no hay ninguna matriz de tiempos cargada en flota_matriz_tiempos.", "warn");
+  }
+}
+
+function escH(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+function onCambiaRecorrido(){
+  document.getElementById("btn-guardar").disabled = !document.getElementById("inp-recorrido").value.trim();
+}
+
+async function cargarRecorridoExistente(){
+  const nombre = document.getElementById("inp-recorrido").value.trim();
+  if(!nombre){ mostrarMsg("msg-recorrido","Escribí o elegí un nombre de recorrido primero.","warn"); return; }
+  const { data, error } = await sb.from("flota_tiempos_viaje").select("*").eq("recorrido", nombre).order("orden_parada",{ascending:true});
+  if(error){ mostrarMsg("msg-recorrido","Error al cargar: "+error.message,"err"); return; }
+  if(!data.length){ mostrarMsg("msg-recorrido",`"${nombre}" todavía no tiene paradas guardadas — empezá a agregar.`,"warn"); paradas=[]; renderParadas(); return; }
+  paradas = data.filter(d=>d.orden_parada>0).map(d=>d.sucursal); // orden_parada 0 = fábrica, implícito
+  mostrarMsg("msg-recorrido", `Cargado "${nombre}" con ${paradas.length} paradas.`, "ok");
+  document.getElementById("btn-guardar").disabled = false;
+  document.getElementById("btn-borrar").disabled = false;
+  renderParadas();
+}
+
+function agregarParada(){
+  const sel = document.getElementById("sel-parada");
+  const val = sel.value;
+  if(!val) return;
+  if(paradas.includes(val)){ mostrarMsg("msg-recorrido","Esa parada ya está en la lista.","warn"); return; }
+  paradas.push(val);
+  renderParadas();
+}
+function quitarParada(i){ paradas.splice(i,1); renderParadas(); }
+function subirParada(i){ if(i===0) return; [paradas[i-1],paradas[i]]=[paradas[i],paradas[i-1]]; renderParadas(); }
+function bajarParada(i){ if(i===paradas.length-1) return; [paradas[i+1],paradas[i]]=[paradas[i],paradas[i+1]]; renderParadas(); }
+
+function renderParadas(){
+  const cont = document.getElementById("lista-paradas");
+  const totalBar = document.getElementById("total-bar");
+  if(!paradas.length){
+    cont.innerHTML = `<div class="empty">Todavía no agregaste ninguna parada — arranca siempre desde Fábrica.</div>`;
+    totalBar.style.display = "none";
+    return;
+  }
+  let acumulado = 0;
+  let anterior = "FABRICA";
+  let faltaDato = false;
+  const filas = paradas.map((p,i)=>{
+    const tramo = minutosEntre(anterior, p);
+    let legTxt;
+    if(tramo===null){
+      faltaDato = true;
+      legTxt = `<span style="color:var(--red)">sin dato entre "${escH(anterior)}" y "${escH(p)}"</span>`;
+    } else {
+      acumulado += tramo;
+      legTxt = `+<b>${tramo}</b> min desde ${escH(anterior==="FABRICA"?"Fábrica":anterior)}`;
+    }
+    anterior = p;
+    return `
+    <div class="stop">
+      <div class="stop-num">${i+1}</div>
+      <div class="stop-name">${escH(p)}</div>
+      <div class="stop-leg">${legTxt}</div>
+      <div class="stop-total">acum: ${faltaDato?"—":Math.round(acumulado)+" min"}</div>
+      <div class="stop-actions">
+        <button class="icon-btn" onclick="subirParada(${i})" ${i===0?"disabled":""} title="Subir">↑</button>
+        <button class="icon-btn" onclick="bajarParada(${i})" ${i===paradas.length-1?"disabled":""} title="Bajar">↓</button>
+        <button class="icon-btn" onclick="quitarParada(${i})" title="Quitar">✕</button>
+      </div>
+    </div>`;
+  }).join("");
+  cont.innerHTML = filas;
+  totalBar.style.display = "flex";
+  document.getElementById("total-minutos").textContent = faltaDato ? "Faltan datos en la matriz" : `${Math.round(acumulado)} minutos`;
+}
+
+function mostrarMsg(id, texto, tipo){
+  document.getElementById(id).innerHTML = `<div class="msg ${tipo}">${escH(texto)}</div>`;
+}
+
+async function guardarRecorrido(){
+  const nombre = document.getElementById("inp-recorrido").value.trim();
+  if(!nombre){ mostrarMsg("msg-recorrido","Ponele un nombre al recorrido.","warn"); return; }
+  if(!paradas.length){ mostrarMsg("msg-recorrido","Agregá al menos una parada.","warn"); return; }
+
+  const filas = paradas.map((sucursal,i)=>({
+    recorrido: nombre, orden_parada: i+1, sucursal,
+  }));
+
+  try{
+    // Borrar lo que tuviera antes este recorrido y volver a insertar
+    // con el orden nuevo — más simple y seguro que ir actualizando
+    // fila por fila.
+    const { error: eDel } = await sb.from("flota_tiempos_viaje").delete().eq("recorrido", nombre);
+    if(eDel) throw eDel;
+    const { error: eIns } = await sb.from("flota_tiempos_viaje").insert(filas);
+    if(eIns) throw eIns;
+    mostrarMsg("msg-recorrido", `✅ Guardado "${nombre}" con ${paradas.length} paradas.`, "ok");
+    document.getElementById("btn-borrar").disabled = false;
+    if(!RECORRIDOS_EXISTENTES.includes(nombre)){
+      RECORRIDOS_EXISTENTES.push(nombre);
+      document.getElementById("dl-recorridos").innerHTML = RECORRIDOS_EXISTENTES.map(r=>`<option value="${escH(r)}">`).join("");
+    }
+  }catch(e){
+    mostrarMsg("msg-recorrido", "No se pudo guardar: "+e.message, "err");
+  }
+}
+
+async function borrarRecorrido(){
+  const nombre = document.getElementById("inp-recorrido").value.trim();
+  if(!nombre) return;
+  if(!confirm(`¿Borrar todas las paradas guardadas de "${nombre}"?`)) return;
+  const { error } = await sb.from("flota_tiempos_viaje").delete().eq("recorrido", nombre);
+  if(error){ mostrarMsg("msg-recorrido","No se pudo borrar: "+error.message,"err"); return; }
+  paradas = [];
+  renderParadas();
+  mostrarMsg("msg-recorrido", `Borrado "${nombre}".`, "ok");
+  document.getElementById("btn-borrar").disabled = true;
+}
+
+cargarDatos();
+</script>
+</body>
+</html>
