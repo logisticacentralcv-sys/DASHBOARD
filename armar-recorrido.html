@@ -190,8 +190,20 @@ async function cargarDatos(){
 
 function escH(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
+let _ultimoCargado = "";
 function onCambiaRecorrido(){
-  document.getElementById("btn-guardar").disabled = !document.getElementById("inp-recorrido").value.trim();
+  const nombre = document.getElementById("inp-recorrido").value.trim();
+  document.getElementById("btn-guardar").disabled = !nombre;
+  // Auto-cargar apenas el nombre tipeado coincide exactamente con uno
+  // que ya existe (por ejemplo, al elegirlo del desplegable) — así no
+  // hace falta acordarse de tocar "Cargar existente" aparte.
+  const coincideExacto = RECORRIDOS_EXISTENTES.some(r=>r===nombre);
+  if(coincideExacto && nombre!==_ultimoCargado){
+    _ultimoCargado = nombre;
+    cargarRecorridoExistente();
+  } else if(!coincideExacto){
+    _ultimoCargado = "";
+  }
 }
 
 async function cargarRecorridoExistente(){
