@@ -97,6 +97,9 @@ function urlTransferLog(sucursal){
   return u;
 }
 const RADIO_TOLERANCIA_METROS = 50;
+// Más allá de esta distancia NO se registra la llegada a una sucursal (antes solo avisaba
+// y dejaba "confirmar igual": con un QR guardado se podía marcar llegada desde cualquier lado).
+const RADIO_BLOQUEO_METROS = 300;
 
 function normNotif(s){ return (s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
 // Fecha de "hoy" en horario LOCAL (Argentina) — toISOString() sola
@@ -168,9 +171,7 @@ async function cargarInicial(){
     SUCURSAL_OFICIAL = "FABRICA";
   }
   $("suc-name-display").textContent = esFabrica() ? "🏭 Fábrica" : "📍 "+SUCURSAL_OFICIAL;
-  // Botón permanente hacia TransferLog con la sucursal ya elegida
-  const lk = $("link-transferlog");
-  if(lk && SUCURSAL_OFICIAL){ lk.href = urlTransferLog(esFabrica() ? "Fabrica" : SUCURSAL_OFICIAL); lk.style.display = "block"; }
+  // (El enlace a TransferLog aparece recién cuando la llegada/presencia queda registrada.)
 
   if(!esFabrica() && SUCURSAL_OFICIAL) chequearAvisosTransferencia(SUCURSAL_OFICIAL);
 
@@ -301,7 +302,7 @@ function obtenerUbicacion(){
     setTimeout(function(){fin({lat:null,lon:null});}, 6000);
     try{
       navigator.geolocation.getCurrentPosition(
-        function(pos){fin({lat:pos.coords.latitude, lon:pos.coords.longitude});},
+        function(pos){fin({lat:pos.coords.latitude, lon:pos.coords.longitude, acc:pos.coords.accuracy});},
         function(){fin({lat:null,lon:null});},
         {enableHighAccuracy:true, timeout:5000, maximumAge:20000}
       );
@@ -369,6 +370,7 @@ async function render(){
       const v = await obtenerViaje(viajeActivo);
       if(normNotif(v.recorrido).indexOf("verduleria")!==-1) renderFabricaVerduleria(v);
       else renderFabricaNormal(v);
+      presenciaFabrica(v);
     }
   } else {
     if(!viajeActivo){
@@ -559,35 +561,76 @@ function renderSucursalSinViaje(){
   $("contenido").innerHTML = html;
 }
 
-async function registrarLlegada(idViaje, sucursal, lat, lon){
-  const viaje = await obtenerViaje(idViaje);
-  if(!viaje) throw new Error("El viaje no existe.");
-  if(viaje.estado!=="ACTIVO") throw new Error("El viaje ya fue finalizado.");
-  const { data: yaExiste } = await sb.from("flota_registros_qr").select("id").eq("id_viaje", idViaje).eq("sucursal", sucursal).eq("evento","LLEGADA").limit(1);
-  if(yaExiste && yaExiste.length) throw new Error("Ya registraste la llegada acá para este viaje.");
-  const gps = validarDistanciaLocal(sucursal, lat, lon);
-  await sb.from("flota_registros_qr").insert({ts:new Date().toISOString(), id_viaje:idViaje, sucursal:sucursal, evento:"LLEGADA", gps_obs:textoGps(gps), recorrido:viaje.recorrido});
+// ── Presencia: escanear el QR EN la sucursal es "llegué" ─────────────────────
+// Se exige ubicación y estar dentro del radio; sin eso no se registra nada.
+async function verificarPresenciaEstricta(sucursal){
+  const ubic = await obtenerUbicacion();
+  if(ubic.lat===null) return {ok:false, motivo:"sin-gps"};
+  const gps = validarDistanciaLocal(sucursal, ubic.lat, ubic.lon);
+  if(gps.tieneCoordSucursal){
+    const holgura = Math.min(ubic.acc||0, 100);   // el GPS del celular no es exacto
+    if(gps.distanciaM - holgura > RADIO_BLOQUEO_METROS) return {ok:false, motivo:"lejos", distanciaM:gps.distanciaM};
+  }
+  return {ok:true, gps:gps, lat:ubic.lat, lon:ubic.lon};
+}
+function horaCorta(iso){ try{ return new Date(iso).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}); }catch(e){ return ""; } }
+// Deja una "marca de presencia" cada vez que se escanea con la ubicación correcta (como mucho una cada 5 min).
+// TransferLog la usa para mostrar "Estás en…" solo mientras la persona realmente está ahí.
+async function registrarPresenciaSiHaceFalta(viaje, sucursal, gps){
+  const { data: ult } = await sb.from("flota_registros_qr").select("ts").eq("id_viaje", viaje.id).eq("sucursal", sucursal)
+    .in("evento", ["LLEGADA","PRESENCIA"]).order("ts",{ascending:false}).limit(1);
+  if(ult && ult.length && (Date.now() - new Date(ult[0].ts).getTime()) < 5*60*1000) return;
+  await sb.from("flota_registros_qr").insert({ts:new Date().toISOString(), id_viaje:viaje.id, sucursal:sucursal, evento:"PRESENCIA", gps_obs:textoGps(gps), recorrido:viaje.recorrido});
+}
+function mostrarLinkTransferLog(sucursalParam){
+  const lk = $("link-transferlog");
+  if(lk){ lk.href = urlTransferLog(sucursalParam); lk.style.display = "block"; }
+}
+function renderBloqueoPresencia(r){
+  const msg = r.motivo==="sin-gps"
+    ? "Necesitamos tu ubicación para registrar la llegada. Activala (GPS y permiso del navegador) y tocá Reintentar."
+    : "Estás a unos <b style=\"color:#f1f5f9\">"+Math.round(r.distanciaM)+" metros</b> de "+escHtml(SUCURSAL_OFICIAL)+". Acercate a la sucursal y volvé a escanear el QR.";
+  $("contenido").innerHTML = '<div class="card"><div class="estado-warn"><span class="estado-warn-icon">📍🔒</span>'+
+    '<div class="estado-warn-title">No pudimos confirmar que estés acá</div>'+
+    '<div class="estado-warn-sub" style="line-height:1.5">'+msg+'</div></div>'+
+    '<button class="btn btn-primary" onclick="render()">🔄 Reintentar</button></div>';
+}
+function renderLlegadaOk(v, yaEstaba, ts){
+  $("contenido").innerHTML = '<div class="card"><div class="estado-ok"><span class="estado-ok-icon">✅</span>'+
+    '<div class="estado-ok-title">'+(yaEstaba?"Ya estás registrado acá":"¡Llegada registrada!")+'</div>'+
+    '<div class="estado-ok-val">'+escHtml(SUCURSAL_OFICIAL)+'</div>'+
+    '<div class="estado-ok-sub">Viaje '+escHtml(v.id)+' · '+escHtml(horaCorta(ts))+'</div></div>'+
+    '<a href="'+urlTransferLog(SUCURSAL_OFICIAL)+'" target="_blank" rel="noopener" '+
+    'style="display:block;margin-top:14px;padding:16px;border-radius:12px;background:#1d4ed8;color:#fff;font-weight:800;font-size:16px;text-decoration:none;text-align:center;box-shadow:0 4px 14px rgba(29,78,216,.35)">'+
+    '📦 Ver qué retirar y dejar acá →</a></div>';
 }
 
 function renderSucursalConViaje(v){
-  $("contenido").innerHTML = '<div class="card"><div class="card-title">📍 Registrar llegada</div>'+
-    '<div class="viaje-info">'+
-    '<div class="viaje-info-row"><span class="vi-label">Viaje</span><span class="viaje-id">'+escHtml(v.id)+'</span></div>'+
-    '<div class="viaje-info-row"><span class="vi-label">Recorrido</span><span class="vi-val">'+escHtml(v.recorrido)+'</span></div>'+
-    '</div>'+
-    '<button class="btn btn-green" onclick="accionRegistrarEvento()" id="btn-reg">🟢 Confirmar llegada</button></div>';
+  // Escanear = llegué. No hay botón: se verifica la ubicación y se registra solo.
+  return autoRegistrarLlegada(v);
 }
-
-async function accionRegistrarEvento(){
-  const btn = $("btn-reg");
-  if(btn){ btn.disabled=true; btn.textContent="Verificando ubicación..."; }
-  const ubic = await chequearUbicacion(SUCURSAL_OFICIAL);
-  if(!ubic.continuar){ if(btn){btn.disabled=false;btn.textContent="🟢 Confirmar llegada";} return; }
-  if(btn) btn.textContent="Registrando...";
+async function autoRegistrarLlegada(v){
+  setLoading("Verificando ubicación...");
   try{
-    await registrarLlegada(viajeActivo, SUCURSAL_OFICIAL, ubic.lat, ubic.lon);
-    showExito("¡Llegada registrada!", SUCURSAL_OFICIAL, "Llegada confirmada ✓");
-  }catch(e){ if(btn){btn.disabled=false;btn.textContent="🟢 Confirmar llegada";} showError(e); }
+    const pres = await verificarPresenciaEstricta(SUCURSAL_OFICIAL);
+    if(!pres.ok){ renderBloqueoPresencia(pres); return; }
+    if(v.estado!=="ACTIVO") throw new Error("El viaje ya fue finalizado.");
+    const { data: yaExiste } = await sb.from("flota_registros_qr").select("id,ts").eq("id_viaje", v.id).eq("sucursal", SUCURSAL_OFICIAL).eq("evento","LLEGADA").limit(1);
+    let ts = new Date().toISOString(), yaEstaba = false;
+    if(yaExiste && yaExiste.length){ yaEstaba = true; ts = yaExiste[0].ts; }
+    else await sb.from("flota_registros_qr").insert({ts:ts, id_viaje:v.id, sucursal:SUCURSAL_OFICIAL, evento:"LLEGADA", gps_obs:textoGps(pres.gps), recorrido:v.recorrido});
+    await registrarPresenciaSiHaceFalta(v, SUCURSAL_OFICIAL, pres.gps);
+    renderLlegadaOk(v, yaEstaba, ts);
+  }catch(e){ showError(e); }
+}
+// En fábrica: con el viaje activo y la ubicación correcta se deja la marca de presencia y aparece el enlace.
+async function presenciaFabrica(v){
+  try{
+    const pres = await verificarPresenciaEstricta("FABRICA");
+    if(!pres.ok) return;
+    await registrarPresenciaSiHaceFalta(v, "FABRICA", pres.gps);
+    mostrarLinkTransferLog("Fabrica");
+  }catch(e){ console.warn("presencia fábrica:", e); }
 }
 
 cargarInicial();
