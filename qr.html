@@ -75,6 +75,10 @@ select:focus,input:focus{border-color:var(--blue)}
     <div class="suc-label">Punto de registro</div>
     <div class="suc-name" id="suc-name-display">—</div>
   </div>
+  <a id="link-transferlog" href="#" target="_blank" rel="noopener"
+     style="display:none;margin:0 0 14px;padding:14px 18px;border-radius:12px;background:#1d4ed8;color:#fff;font-weight:700;font-size:15px;text-decoration:none;text-align:center;box-shadow:0 4px 14px rgba(29,78,216,.35)">
+    📦 Ver qué retirar y dejar acá →
+  </a>
   <div id="contenido" style="width:100%">
     <div class="loader-wrap"><div class="spinner"></div><div class="loader-text">Cargando...</div></div>
   </div>
@@ -85,6 +89,13 @@ const SUPABASE_URL = "https://lrwwpulunfcavmvmwotd.supabase.co";
 const SUPABASE_KEY = "sb_publishable_SrUcYrDVBIOvZgF-DSPcyg_qV0LXEDQ";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const TRANSFER_APP_URL = "https://transferlog.vercel.app/";
+// Enlace a TransferLog que abre directo "Estás en <sucursal>" (retirar / dejar ahí).
+// El viaje activo viaja en el enlace para dejar constancia de a qué viaje pertenece.
+function urlTransferLog(sucursal){
+  let u = TRANSFER_APP_URL + "?s=" + encodeURIComponent(sucursal || "");
+  try{ const v = localStorage.getItem("viajeActivo_cv2"); if(v) u += "&v=" + encodeURIComponent(v); }catch(e){}
+  return u;
+}
 const RADIO_TOLERANCIA_METROS = 50;
 
 function normNotif(s){ return (s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
@@ -129,9 +140,9 @@ async function chequearAvisosTransferencia(sucursalNombre){
       sb.from("solicitudes").select("id",{count:"exact",head:true}).eq("sucursal",sucursalNombre).eq("estado","Aprobada"),
       sb.from("solicitudes").select("id",{count:"exact",head:true}).eq("destino",sucursalNombre).eq("estado","En tránsito"),
     ]);
-    if(listaParaRetirar.count) mostrarToast("Tenés "+listaParaRetirar.count+" transferencia(s) lista(s) para retirar acá", "retirar", TRANSFER_APP_URL);
-    if(aprobadaSinArmar.count) mostrarToast("Hay transferencia(s) aprobadas acá — pedí a la sucursal que las arme", "aprobada", TRANSFER_APP_URL);
-    if(paraDejar.count) mostrarToast("Tenés "+paraDejar.count+" transferencia(s) para dejar acá", "dejar", TRANSFER_APP_URL);
+    if(listaParaRetirar.count) mostrarToast("Tenés "+listaParaRetirar.count+" transferencia(s) lista(s) para retirar acá", "retirar", urlTransferLog(sucursalNombre));
+    if(aprobadaSinArmar.count) mostrarToast("Hay transferencia(s) aprobadas acá — pedí a la sucursal que las arme", "aprobada", urlTransferLog(sucursalNombre));
+    if(paraDejar.count) mostrarToast("Tenés "+paraDejar.count+" transferencia(s) para dejar acá", "dejar", urlTransferLog(sucursalNombre));
   }catch(e){ console.error("Error chequeando avisos de TransferApp:", e); }
 }
 
@@ -157,6 +168,9 @@ async function cargarInicial(){
     SUCURSAL_OFICIAL = "FABRICA";
   }
   $("suc-name-display").textContent = esFabrica() ? "🏭 Fábrica" : "📍 "+SUCURSAL_OFICIAL;
+  // Botón permanente hacia TransferLog con la sucursal ya elegida
+  const lk = $("link-transferlog");
+  if(lk && SUCURSAL_OFICIAL){ lk.href = urlTransferLog(esFabrica() ? "Fabrica" : SUCURSAL_OFICIAL); lk.style.display = "block"; }
 
   if(!esFabrica() && SUCURSAL_OFICIAL) chequearAvisosTransferencia(SUCURSAL_OFICIAL);
 
