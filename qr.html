@@ -116,6 +116,12 @@ function $(id){ return document.getElementById(id); }
 
 const params = new URLSearchParams(location.search);
 const SUCURSAL_PARAM = params.get("s") || "";
+// El QR ahora se maneja en TransferLog: ahí el repartidor ya está identificado, elige el recorrido,
+// ve lo que tiene que llevar y lo toma, y en cada sucursal se registra la llegada y entrega con la firma
+// de quien recibe. Esta página queda solo para Verdulería y casos especiales (con "directo=1").
+if(SUCURSAL_PARAM && params.get("directo")!=="1"){
+  location.replace("https://transferlog.vercel.app/?s=" + encodeURIComponent(SUCURSAL_PARAM));
+}
 function esFabrica(){ return normNotif(SUCURSAL_PARAM)==="fabrica"; }
 
 let CACHE_SUCURSALES = [];
